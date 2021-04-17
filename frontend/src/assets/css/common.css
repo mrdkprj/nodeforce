@@ -1,0 +1,175 @@
+/* ------------------------------
+   Overrides
+------------------------------ */
+label {
+    font-weight: normal !important;
+    margin-bottom: 0 !important;
+}
+
+button:disabled {
+  cursor: default !important;
+}
+
+
+
+/* ------------------------------
+   #JQuery UI
+------------------------------ */
+.ui-widget input, .ui-widget select, .ui-widget textarea, .ui-widget button{
+    font-size: 9.5pt;
+    font-family:Arial;
+    margin-bottom: 2px;
+}
+.ui-tabs .ui-tabs-panel {
+    padding: 0;
+    margin: 0;
+}
+
+.ui-tabs .ui-tabs-nav li a {
+    font-size:10pt !important;
+}
+
+.noselect {
+    -webkit-user-select: none; /* Safari */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+}
+
+#soqlArea .ui-tabs .ui-tabs-nav .ui-tabs-anchor,
+#describeArea .ui-tabs .ui-tabs-nav .ui-tabs-anchor,
+#apexArea .ui-tabs .ui-tabs-nav .ui-tabs-anchor{
+    float: left;
+    padding: .5em .5em .5em 1em;
+    text-decoration: none;
+}
+
+.ui-tabs .ui-tabs-nav:focus {
+    padding-left: 0px;
+    background: transparent;
+    border-width: 0px 0px 1px 0px;
+    -moz-border-radius: 0px;
+    -webkit-border-radius: 0px;
+    border-radius: 0px;
+}
+
+.tab-area ul li a {
+    outline: none;
+}
+
+.tab-area ul li {
+    outline: none;
+}
+
+.ui-tabs .ui-tabs-nav li.ui-tabs-active .ui-tabs-anchor,
+.ui-tabs .ui-tabs-nav li.ui-state-disabled .ui-tabs-anchor,
+.ui-tabs .ui-tabs-nav li.ui-tabs-loading .ui-tabs-anchor {
+     cursor: pointer;
+}
+
+.add-tab-li{
+    height: 28px;
+}
+
+/* ------------------------------
+   #Areas
+------------------------------ */
+.form-area{
+    width: 80%;
+    margin: 0 auto;
+}
+
+.form-area .export-btn-area .btn{
+    font-size:9.5pt;
+    display: inline;
+}
+
+.tab-area{
+    width: 80%;
+    border: 0px solid lightgray;
+    margin: 0 auto;
+}
+
+.tab-area li .ui-icon-close {
+    float: left;
+    margin: 0.4em 0.2em 0 0;
+    cursor: pointer;
+}
+
+/* ------------------------------
+   #tab area
+------------------------------ */
+.result-tab{
+    padding-right: 7px;
+}
+
+.result-info{
+    border: 1px solid lightgray;
+    font-size: 9pt;
+    font-family:Arial;
+    padding: 4px;
+    margin-bottom: 2px;
+    margin-top: 2px;
+    white-space: pre-wrap;
+}
+
+.result-grid {
+    background: white;
+    outline: 0;
+    border: 0px solid gray;
+    /*min-height: 500px;*/
+    overflow: auto;
+    height: 0;
+}
+
+
+/* ------------------------------
+    Add tab button
+------------------------------ */
+.icon-plus {
+    border:1px solid #aaa;
+    background-color: #fff;
+    border-top-right-radius: 4px;
+    border-top-left-radius: 4px;
+    width: 27px;
+    height: 20px;
+    position: relative;
+    top: 8px;
+    left: 0px;
+    margin-bottom:0px;
+    border-bottom: 0px;
+    cursor: pointer;
+}
+
+.icon-plus:after {
+    background-color: #aaa;
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+    position: absolute;
+    top:9px;
+    left: 5px;
+    content:"";
+}
+
+.icon-plus:before {
+    background-color: #aaa;
+    width: 2px;
+    height: 16px;
+    border-radius: 1px;
+    position: absolute;
+    top:2px;
+    left: 12px;
+    content:"";
+}
+
+/* ------------------------------
+   Textarea
+------------------------------ */
+.code-input{
+	font-family: Consolas;
+}
+
+
+
