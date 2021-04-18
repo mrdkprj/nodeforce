@@ -7,11 +7,11 @@
                 <textarea id="inputSoql" class="code-input" spellcheck="false" cols="120" rows="5" v-model="inputSoql"></textarea>
             </div>
             <div>
-                <button type="button" id="executeSoqlBtn" class="btn btn-sm btn-primary" @click="onExecuteSoqlBtn">Execute</button>
-                <button type="button" id="test" class="btn btn-sm btn-primary" @click="showTest">Test</button>
-                <label class="soql-options"><input type="checkbox" id="useTooling" v-model="tooling"> Use Tooling API</label>
+                <button type="button" id="executeSoqlBtn" class="btn btn-main" @click="onExecuteSoqlBtn">Execute</button>
+                <button type="button" id="test" class="btn btn-main" @click="showTest">Test</button>
+                <label class="soql-options"><input type="checkbox" id="useTooling" v-model="tooling"/> Use Tooling API</label>
             </div>
-            <p><message ref="message"></message></p>
+            <message ref="message"></message>
         </div>
 
         <soqltab ref="tab" @onExecuteRequest="executeSoql($event)" @requestOpenHistory="openHistory"></soqltab>
@@ -22,9 +22,6 @@
 import message from "@/components/message.vue";
 import history from "@/components/history.vue";
 import tab from "@/components/soqlTab.vue";
-const DEFAULT_DATA_TYPE = "";
-const DEFAULT_CONTENT_TYPE = null;
-const POST = "post";
 
 export default {
 
@@ -69,9 +66,8 @@ export default {
         },
 
         displayQueryResult3: function(json) {
-            var _selectedTabId = $("#soqlArea .tab-area .ui-tabs-panel:visible").attr("tabId");
-            const elementId = "#soqlArea #soqlGrid" + _selectedTabId;
-            new GridTable(document.querySelector(elementId), json);
+            const elementId = "soqlGrid0";
+            new GridTable(document.getElementById(elementId), json);
         },
 
         //------------------------------------------------
@@ -86,17 +82,15 @@ export default {
             let inputSoql = soql ? soql : this.inputSoql;
 
             if(!inputSoql){
-                return false;
+                return;
             }
-
-            this.$refs.message.hideMessageArea();
 
             this.$store.dispatch(
                 "auth/request",
                 {
                     url: "/soql",
                     data:{
-                        soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.currentTabId
+                        soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.getActiveTabElementId()
                     }
                 }
             ).then(res => this.displayQueryResult(res))
@@ -132,8 +126,8 @@ export default {
 <style>
     #soqlArea{
         position:relative;
-        top:0;
-        right:0;
+        top:0px;
+        right:0px;
     }
 
     .soql-options{

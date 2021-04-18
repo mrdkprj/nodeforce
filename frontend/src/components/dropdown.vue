@@ -1,19 +1,18 @@
 <template>
-    <div class="btn-group">
-        <button id="username" class="btn btn-secondary btn-sm dropdown-toggle dropdown-btn paper-raise"
-         type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{currentUser}}</button>
+    <div id="userList" class="user-list" :class="dropdownStatus">
+        <button id="username" class="btn dropdown-btn" type="button" @click="onDropdownClick" @blur="onDropdownClick">{{currentUser}}</button>
         <ul id="dropdownMenu" class="dropdown-menu">
             <li class="dropdown-submenu">
-                <a id="changeLocale" href="javascript:void(0)">Locale Option</a>
+                <a id="changeLocale">Locale Option</a>
                 <ul class="dropdown-menu locale-options">
-                    <li><a href="javascript:void(0)" locale-option="ja">Japanese</a></li>
-                    <li><a href="javascript:void(0)" locale-option="en_US">English</a></li>
+                    <li><a locale-option="ja">Japanese</a></li>
+                    <li><a locale-option="en_US">English</a></li>
                 </ul>
             </li>
-            <li><a id="refreshSObjects" href="javascript:void(0)" action="<%= refresh_sobjects_path() %>">Refresh sObjects</a></li>
-            <li><a id="refreshMetadata" href="javascript:void(0)" action="<%= refresh_metadata_path() %>">Refresh Metadata</a></li>
+            <li><a id="refreshSObjects">Refresh sObjects</a></li>
+            <li><a id="refreshMetadata">Refresh Metadata</a></li>
             <li role="separator" class="divider"></li>
-            <li><a href="javascript:void(0)" @click="logout()">Logout</a></li>
+            <li><a @mousedown="logout()">Logout</a></li>
         </ul>
     </div>
 </template>
@@ -25,8 +24,19 @@ export default {
     data: function () {
         return {
             currentUser: this.$store.state.auth.username,
-            users: []
+            opened: false
         }
+    },
+
+    computed: {
+        dropdownStatus: function () {
+            if(this.opened){
+                return "open";
+            }else{
+                return "";
+            }
+        },
+
     },
 
     methods: {
@@ -44,78 +54,73 @@ export default {
         },
 
         onDropdownClick: function(e){
-            if($.isAjaxBusy()){
-                return false;
-            }
-
-            const selectedUser = e.target.text.trim();
-
-            if(this.user == selectedUser){
-                return false;
-            }
-
-            this.currentUser = selectedUser;
-
-            this.updateCurrentUser();
+            this.opened = !this.opened;
         },
 
-        prepareUser: function(){
-            const options = $.getAjaxOptions("/init", "GET", {}, "", null);
-            const callbacks = $.getAjaxCallbacks(this.displayUsers, this.displayUsers, null);
-            $.executeAjax(options, callbacks);
-        },
-
-        updateCurrentUser: function(){
-            const options = $.getAjaxOptions("/user", "POST", {currentUser: this.currentUser}, "", null);
-            const callbacks = $.getAjaxCallbacks(() => {}, () => {}, null);
-            $.executeAjax(options, callbacks);
-        },
-
-        displayUsers: function(json){
-            this.currentUser = json.currentUser;
-            this.users = json.users;
-        }
     },
-
-    created (){
-        //this.prepareUser();
-    }
 
 }
 </script>
 
 <style scoped>
+    .dropdown-submenu:hover .dropdown-menu{
+        display: block;
+    }
     #username{
         margin-left:10px;
         margin-top:7px;
-        line-height: 1.35 !important;
+        line-height: 1.35;
     }
 
-    .dropdown-menu>li>a{
-        font-size:12px;
+    .user-list {
+        position: relative;
+        display: inline-block;
+        vertical-align: middle;
     }
 
-    .dropdown-item-font{
-        font-size: 0.875rem;
+    .open > .dropdown-menu{
+        display: block;
     }
 
-    .dropdown-btn:hover{
-        color: black;
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 10px;
+        z-index: 1000;
+        display: none;
+        float: left;
+        min-width: 160px;
+        padding: 5px 0;
+        margin: 2px 0 0;
+        font-size: 12px;
+        text-align: left;
+        list-style: none;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border: 1px solid rgba(0, 0, 0, .15);
+        border-radius: 4px;
+        box-shadow: 0 6px 12px rgb(0 0 0 / 18%);
     }
 
-    .disabled-dropdown{
-        color: #bdbcbc;
+    .dropdown-menu > li > a {
+        display: block;
+        padding: 3px 20px 3px 25px;
+        color: #333;
+        white-space: nowrap;
     }
 
-    .header{
-        position: fixed;
-        top:0px;
-        height: 45px;
-        z-index: 3000;
-        width: 100%;
+    .dropdown-menu > li > a:hover,
+    .dropdown-menu > li > a:focus {
+        color: #262626;
+        text-decoration: none;
+        background-color: #f5f5f5;
+        cursor: pointer;
     }
 
     .dropdown-btn{
+        font-size: 12px;
+        line-height: 1.5;
+        border-radius: 3px;
         text-decoration: none;
         color: black;
         background-color: white;
@@ -124,8 +129,8 @@ export default {
         box-shadow: inset 0 3px 5px rgba(0, 0, 0, .175);
     }
 
-    .dropdown-submenu {
-        position: relative;
+    .dropdown-btn:hover{
+        color: black;
     }
 
     .dropdown-submenu>.dropdown-menu {
@@ -133,13 +138,15 @@ export default {
         left: 100%;
         margin-top: -6px;
         margin-left: -1px;
-        -webkit-border-radius: 0 6px 6px 6px;
-        -moz-border-radius: 0 6px 6px;
-        border-radius: 0 6px 6px 6px;
+        border-radius: 0 6px 6px 0;
     }
 
-    .dropdown-submenu:hover>.dropdown-menu {
-        display: block;
+    .dropdown-submenu{
+        position: relative;
+    }
+
+    .dropdown-submenu>.dropdown-menu a {
+        padding-left: 25px;
     }
 
     .dropdown-submenu>a:after {
@@ -148,32 +155,18 @@ export default {
         float: right;
         width: 0;
         height: 0;
-        border-color: transparent;
+        border-color: transparent transparent transparent #000;
         border-style: solid;
         border-width: 5px 0 5px 5px;
-        border-left-color: #000;
         margin-top: 2px;
         margin-right: -10px;
     }
 
-    .dropdown-submenu:hover>a:after {
-        border-left-color: #aaa;
-    }
-
-    .dropdown-submenu.pull-left {
-        float: none;
-    }
-
-    .dropdown-submenu.pull-left>.dropdown-menu {
-        left: -100%;
-        margin-left: 10px;
-        -webkit-border-radius: 6px 0 6px 6px;
-        -moz-border-radius: 6px 0 6px 6px;
-        border-radius: 6px 0 6px 6px;
-    }
-
-    .dropdown-submenu>.dropdown-menu a{
-        padding-left: 25px;
+    .dropdown-menu .divider {
+        height: 1px;
+        margin: 9px 0;
+        overflow: hidden;
+        background-color: #e5e5e5;
     }
 
     .checkmark{
@@ -189,7 +182,6 @@ export default {
         display: inline-block;
     }
 
-    /*Outer box of the fake checkbox*/
     .checkmark:before{
         height: 5px;
         width: 9px;
@@ -200,7 +192,6 @@ export default {
         top: 7px;
     }
 
-    /*Checkmark of the fake checkbox*/
     .checkmark:after {
         height: 5px;
         width: 9px;
@@ -211,7 +202,4 @@ export default {
         top: 7px;
     }
 
-    .user a{
-        padding-left: 25px !important;
-    }
 </style>

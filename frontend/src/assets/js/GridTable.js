@@ -1,44 +1,89 @@
 "use strict";
+
+const Direction = {
+	Up:1,
+	Down:2,
+	Left:3,
+	Right:4,
+	Home:5,
+	End:6
+};
+
+const SelectionMode = {
+	Cell: 1,
+	Row: 2,
+	Column: 3,
+	All: 4,
+};
+
+const ResizeMode = {
+	None:0,
+	Column: 1,
+	Row:2,
+};
+
 class GridTable {
 
-	constructor(rootElement, data) {
+	constructor(rootElement, params) {
 
 		this.rootNode = rootElement;
-		this.rootElement = $(rootElement);
-		this.rootHeight = 500;
+		this.rootNode.innerHTML = "";
+		this.rootHeight = params.height ? params.height : 500;
 
-		this.animationFrame = null;
-		this.rows = data.rows;
-		this.header = data.header;
+		this.rows = params.rows;
+		this.header = params.header;
 		this._rows = null;
 
+		if(Array.isArray(params.readOnly)){
+			this.readOnly = false;
+			this.readOnlyColumns = new Set(params.readOnly);
+		}else{
+			this.readOnly = params.readOnly;
+			this.readOnlyColumns = new Set();
+		}
+
 		this.baseRowHeight = 22;
-		this.headerHeight = 27;
+		this.headerHeight = 28;
 		this.itemCount = this.rows.length;
 		this.totalContentHeight = 0;
 		this.childPositions = null;
+		this.columnPositions = null;
+		this.columnValues = null;
 		this.startNode = 0;
 		this.endNode = 0;
 		this.visibleNodesCount = 0;
+		this.filteredIndex = new Array(this.itemCount).fill(null).map((v,i) => i);
+		this.visibleIndex = this.filteredIndex;
 		this.nodeOffsetY = 0;
 		this.nodeOffsetX = 0;
 		this.visibleViewportHeight = 0;
 
-		this.sizeBase = Util.getSizeBase(this.header, this.rows, this.rootElement.css("font"));
-		this.columnWidths = this.sizeBase.widths;
+		this.calculationBaseStyles = {
+			baseHeight: this.baseRowHeight,
+			font: "12px Verdana,Arial,sans-serif",
+			lineHeight: 21,
+			borderWidth: 1,
+			padding:35
+		}
+		this.sizeBase = Util.getSizeBase(this.header, this.rows, this.calculationBaseStyles);
+		this.updateColumnInfo();
 
 		this.lastPostion = {X:0,Y:0};
+		this.scrollPosition = {X:0, Y:0};
 		this.scrollCallback = null;
 		this.filtered = false;
+		this.sorted = false;
 		this.isDragging = false;
+		this.isResizing = false;
+		this.isSearching = false;
 
 		this.container = null;
 		this.table = null;
-		this.viewport = null;
+		this.table = null;
 		this.visibleNodes = null;
 		this.focusHolder = null;
 		this.cornerCell = null;
-		this.rowHeaderCells = [];
+		this.rowHeaderCellsVirtual = [];
 		this.columnHeaderCells = [];
 
 		this.current = null;
@@ -46,71 +91,50 @@ class GridTable {
 		this.nextCell = null;
 		this.selection = new Selection();
 		this.virtualSelection = new Selection();
+
+		this.animationFrame = null;
+		this.resizeAnimationFrame = null;
 		this.scrollInterval = null;
 
-		this.Direction = {
-				Up:1,
-				Down:2,
-				Left:3,
-				Right:4,
-				Home:5,
-				End:6
-		};
+		this.sortInfo = {order: 1, columnIndex: 0};
 
-		this.SelectionMode = {
-			Cell: 1,
-			Row: 2,
-			Column: 3,
-			All: 4,
-			ContentSelectable: 5
-		}
+		this.history = new EditHistory(this.rows);
+		this.searchUtil = new SearchUtil();
+		this.dropdown = new Dropdown(
+			this.rootNode,
+			{afterDropdownClose: this.onDropdownClose.bind(this), clearFilter:this.onDropdownClear.bind(this)}
+		);
 
-		this.sortMap = {0: "asc"};
+		this.currentSelectionMode = SelectionMode.Cell;
+		this.currentResizeMode = ResizeMode.None;
 
-		this.currentSelectionMode = this.SelectionMode.Cell;
+		this.rootNode.style.height = "100%";
+		this.rootNode.style.position = "relative";
+		this.rootNode.style.overflow = "hidden";
 
-		this.rootElement.empty();
-		this.rootElement.height(this.rootHeight + "px");
-		this.rootElement.css("overflow","auto");
+		this.assignHandler(document, "mousedown", this.onDocumentMouseDown);
+		this.assignHandler(document, "mouseup", this.onDocumentMouseUp);
+		this.assignHandler(document, "copy", this.onDocumentCopy);
+		this.assignHandler(document, "mousemove", this.onDocumentMouseMove);
 
-		$(document).on("mousedown", this.onDocumentMouseDown.bind(this));
-		$(document).on("mouseup", this.onDocumentMouseUp.bind(this));
-		$(document).on("copy" , this.onDocumentCopy.bind(this));
-		$(document).on("mousemove", this.onDocumentMouseMove.bind(this));
-		this.rootElement.on("scroll", this.onRootScroll.bind(this));
+		this.mouseoverEvent = document.createEvent("HTMLEvents");
+		this.mouseoverEvent.initEvent("mouseover", true, true);
+		this.mouseoverEvent.eventName = "mouseover";
 
-		this.prepareVirtualScroll(this.rootElement.scrollTop(), this.rootElement.scrollLeft(), true);
+		this.prepareVirtualScroll(0, 0, true);
 		this.createGridTable();
 
 	}
 
-	prepareVirtualScroll(scrollTop, scrollLeft, reset){
-
-		const findStartNode = (scrollTop, nodePositions, itemCount) => {
-			let startRange = 0;
-			let endRange = itemCount > 0 ? itemCount - 1 : 0;
-
-			while (endRange !== startRange) {
-
-				const middle = Math.floor((endRange - startRange) / 2 + startRange);
-
-				if (nodePositions[middle] <= scrollTop && nodePositions[middle + 1] > scrollTop) {
-					return middle;
-				}
-
-				if (middle === startRange) {
-					return endRange;
-				}
-
-				if (nodePositions[middle] <= scrollTop) {
-					startRange = middle;
-				}else{
-					endRange = middle;
-				}
-			}
-
-			return itemCount;
+	assignHandler(target, event, callback){
+		if(this.rows == null || this.rows.length <= 0){
+			return;
 		}
+
+		target.addEventListener(event, callback.bind(this));
+	}
+
+	prepareVirtualScroll(scrollTop, scrollLeft, reset){
 
 		const findEndNode = (nodePositions, startNode, itemCount, height) => {
 			let endNode;
@@ -123,259 +147,348 @@ class GridTable {
 			return endNode;
 		}
 
-		const getChildPositions = (itemCount) => {
+		const getChildPositions = () => {
 			const results = [0];
-			for (let i = 1; i < itemCount; i++) {
-				results.push(results[i - 1] + this.getChildHeight(i - 1));
+
+			for(let i = 1; i < this.filteredIndex.length; i++){
+				results.push(results[i - 1] + this.getChildHeight(this.filteredIndex[i] -1));
 			}
+
 			return results;
 		}
 
 		const renderAhead = 20;
 
 		if(reset){
-			this.childPositions = getChildPositions(this.itemCount);
-			this.totalContentHeight = this.childPositions[this.itemCount - 1] + this.getChildHeight(this.itemCount - 1);
+			this.childPositions = getChildPositions();
+			this.totalContentHeight = this.childPositions[this.filteredIndex.length - 1] + this.getChildHeight(this.filteredIndex.length - 1);
 		}
 
-		const firstVisibleNode = findStartNode(scrollTop, this.childPositions, this.itemCount);
+		const firstVisibleNode = Util.findClosest(scrollTop, this.childPositions, this.itemCount);
+		const lastVisibleNode = findEndNode(this.childPositions, firstVisibleNode, this.itemCount, this.rootHeight);
 
 		this.startNode = Math.max(0, firstVisibleNode - renderAhead);
-
-		const lastVisibleNode = findEndNode(this.childPositions, firstVisibleNode, this.itemCount, this.rootHeight);
 		this.endNode = Math.min(this.itemCount - 1, lastVisibleNode + renderAhead);
 
-		this.visibleNodesCount = this.endNode - this.startNode + 1;
+		this.visibleNodesCount = (this.endNode - this.startNode) + 1;
+
+		this.visibleIndex = this.filteredIndex.slice(this.startNode, this.startNode + this.visibleNodesCount);
 
 		this.visibleViewportHeight = this.rootHeight - this.headerHeight;
 
 		this.nodeOffsetY = this.childPositions[this.startNode];
 		this.nodeOffsetX = scrollLeft;
+
 	}
 
 	getChildHeight(index){
-		if(this.sizeBase.heights[index] > 1){
-			return (this.baseRowHeight * this.sizeBase.heights[index]) - (this.sizeBase.heights[index] - 1);
-		}else{
-			return this.baseRowHeight;
-		}
+		return this.sizeBase.heights[index];
 	}
 
 	createGridTable(){
 
 		const getContainer = () => {
-			return $("<div>", { class: "gtbl-container", css: {"height": this.totalContentHeight + "px", "overflow": "hidden", "display":"inline-block"}});
+			const container = document.createElement("div");
+			container.classList.add("gtbl-container");
+			container.style.height = this.totalContentHeight + "px";
+			return container;
 		}
 
 		const getCornerCell = () => {
-			const cornerCell = $("<div>", { class: "gtbl-header-cell gtbl-corner-cell stick"});
-			cornerCell.width(this.columnWidths[0] + "px");
-			cornerCell.css("min-width", this.columnWidths[0] + "px");
-			cornerCell.on("click", this.onCornerCellClick.bind(this));
+			const cornerCell = document.createElement("div");
+			cornerCell.classList.add("gtbl-header-cell", "gtbl-corner-cell");
+			cornerCell.style.width = this.rowHeaderWidth + "px";
+			this.assignHandler(cornerCell, "click", this.onCornerCellClick);
 			return cornerCell;
 		}
 
 		const getColumnHeader = () => {
 
-			const columnHeader = $("<div>", { class: "gtbl-row gtbl-row-header gtbl-hidden-row-header"});
+			const columnHeader = document.createElement("div");
+			columnHeader.classList.add("gtbl-row", "gtbl-row-header");
 
 			this.cornerCell = getCornerCell();
-			columnHeader.append(this.cornerCell);
+			columnHeader.appendChild(this.cornerCell);
 
 			this.header.forEach((item, index) => {
-				const header = $("<div>", { class: "gtbl-header-cell gtbl-col-header-cell stick"});
-				header.width(this.columnWidths[index + 1] + "px");
-				header.css("min-width", this.columnWidths[index + 1] + "px");
-				header.on("click", this.onColumnHeaderCellClick.bind(this));
-				header.on("dblclick", this.onColumnHeaderCellDblClick.bind(this));
+				const header = document.createElement("div");
+				header.classList.add("gtbl-header-cell", "gtbl-col-header-cell");
+				header.style.width = this.columnWidths[index] + "px";
+				this.assignHandler(header, "click", this.onColumnHeaderCellClick);
 
-				const link = $("<a>", { class: "sort-link", text: item});
-				link.on("click", this.onColumnHeaderCellDblClick.bind(this));
-				header.append(link);
+				const link = document.createElement("a");
+				link.classList.add("sort-link");
+				link.textContent = item;
+				this.assignHandler(link, "click", this.onSortLinkClick);
 
-				const slidebar = $("<div>", { class: "slidebar"});
-				header.append(slidebar);
+				const sortIcon = document.createElement("span");
+				sortIcon.classList.add("sort-icon");
+
+				const filterIcon = document.createElement("div");
+				filterIcon.classList.add("filter-btn");
+				this.assignHandler(filterIcon, "click", this.onFilterColumnClick);
+				const arrow = document.createElement("div");
+				arrow.classList.add("arrow-down");
+				filterIcon.appendChild(arrow);
+
+				const slidebar = document.createElement("div");
+				slidebar.classList.add("col-slidebar");
+				this.assignHandler(slidebar, "mousedown", this.onSlidebarMousedown);
+
+				header.append(link, sortIcon, filterIcon, slidebar);
 
 				this.columnHeaderCells.push(header);
-				columnHeader.append(header);
+				columnHeader.appendChild(header);
 			});
 
 			return columnHeader;
 		}
 
 		const getTable = () => {
-			return $("<div>", { class: "gtbl gtbl-grid" });
-		}
-
-		const getViewport = () => {
-			return $("<div>", { class: "node-container", css:{"transform": "translateY(0px)"}});
+			const table = document.createElement("div");
+			table.classList.add("gtbl", "gtbl-grid");
+			table.style.top = "0px";
+			return table;
 		}
 
 		const getFocusHolder = () => {
-			const focusHolder = $("<input class='focusHolder' type='text' value='' style='position:fixed;top:-100px;left:-100px;'/>");
-			focusHolder.on("keydown", this.onFocusHolderKeyDown.bind(this));
-			focusHolder.on("keyup", this.onFocusHolderKeyUp.bind(this));
+			const focusHolder = document.createElement("input");
+			focusHolder.classList.add("focus-holder");
+			focusHolder.type ='text';
+			this.assignHandler(focusHolder, "keydown", this.onFocusHolderKeydown);
+			this.assignHandler(focusHolder, "keypress", this.onFocusHolderKeypress);
+			this.assignHandler(focusHolder, "keyup", this.onFocusHolderKeyUp);
+			this.assignHandler(focusHolder, "paste", this.onFocusHolderPaste);
 			return focusHolder;
 		}
 
+		const getInputHolder = () => {
+			this.editor = document.createElement("textarea");
+			this.editor.spellcheck = false;
+			this.editor.classList.add("cell-editor");
+			this.assignHandler(this.editor, "blur", this.onEditorBlur);
+			this.assignHandler(this.editor, "keydown", this.onEditorKeydown);
+			this.assignHandler(this.editor, "keypress", this.onEditorKeypress);
+			this.assignHandler(this.editor, "paste", this.onEditorPaste)
+
+			const inputHolder = document.createElement("div");
+			inputHolder.classList.add("input-holder");
+			inputHolder.appendChild(this.editor);
+			return inputHolder;
+		}
+
+		const getSearchDialog = () => {
+			const dialog = document.createElement("div");
+			dialog.classList.add("dialog");
+			dialog.style.top = (this.headerHeight + 1) + "px";
+			dialog.style.right = "20px";
+			const txt = document.createElement("textarea");
+			txt.spellcheck = false;
+			txt.classList.add("dialog-txt");
+			this.assignHandler(txt, "keydown", this.onSearchDialogKeydown);
+
+			this.searchResultArea = document.createElement("div");
+			this.searchResultArea.classList.add("search-result");
+			this.searchResultArea.textContent = "0/0";
+
+			dialog.appendChild(txt);
+			dialog.appendChild(this.searchResultArea);
+
+			return dialog;
+		}
+
+		this.viewport = document.createElement("div");
+		this.viewport.style.height = this.rootHeight + "px";
+		this.viewport.classList.add("gtbl-viewport");
+		this.assignHandler(this.viewport, "scroll", this.onRootScroll);
+
+		const header = getColumnHeader();
+		this.viewport.appendChild(header);
 		this.container = getContainer();
-		this.rootElement.append(this.container);
-		this.rootElement.prepend(getColumnHeader());
 
 		this.table = getTable();
-		this.container.append(this.table);
+		this.table.appendChild(this.getVisibleChildNodes());
+		this.visibleNodes = Array.from(this.table.childNodes);
+		this.container.appendChild(this.table);
+		this.viewport.appendChild(this.container);
 
-		this.viewport = getViewport();
-		this.table.append(this.viewport);
-
-		this.visibleNodes = this.getVisibleChildNodes();
-		this.viewport.append(this.visibleNodes);
+		this.rootNode.appendChild(this.viewport);
 
 		this.focusHolder = getFocusHolder();
-		this.rootElement.append(this.focusHolder);
+		this.rootNode.appendChild(this.focusHolder);
+
+		this.inputHolder = getInputHolder();
+		this.viewport.appendChild(this.inputHolder);
+
+		this.dialog = getSearchDialog();
+		this.rootNode.appendChild(this.dialog);
 	}
 
 	createRow(rowIndex){
 
 		const rowData = this.rows[rowIndex];
 
-		const isFirstRow = rowIndex == 0;
+		const rowDiv = document.createElement("div");
+		rowDiv.classList.add("gtbl-row", "gtbl-detail");
 
-		const rowDiv = $("<div>", { class: "gtbl-row gtbl-detail" });
+		const rowHeaderCell = document.createElement("div");
+		rowHeaderCell.classList.add("gtbl-header-cell", "gtbl-row-header-cell");
+		rowHeaderCell.style.height = this.getChildHeight(rowIndex) + "px";
+		this.assignHandler(rowHeaderCell, "click", this.onRowHeaderCellClick);
 
-		const rowHeaderCell = $("<div>", { class: "gtbl-header-cell gtbl-row-header-cell stick", css:{"transform": "translate3D(0px, 0px, 0px)"}, text: rowIndex + 1 });
-		rowHeaderCell.on("click", this.onRowHeaderCellClick.bind(this));
+		const rowNumber = document.createElement("span");
+		rowNumber.classList.add("row-number");
+		rowNumber.textContent = rowIndex + 1;
+		rowHeaderCell.appendChild(rowNumber);
 
-		if(isFirstRow){
-			rowHeaderCell.width(this.columnWidths[0] + "px");
-			rowHeaderCell.css("min-width", this.columnWidths[0] + "px");
-		}
+		const slidebar = document.createElement("div");
+		slidebar.classList.add("row-slidebar");
+		this.assignHandler(slidebar, "mousedown", this.onRowSlidebarMousedown);
+		rowHeaderCell.appendChild(slidebar);
 
-		this.rowHeaderCells.push(rowHeaderCell);
+		rowHeaderCell.style.width = this.rowHeaderWidth + "px";
 
-		rowDiv.append(rowHeaderCell);
+		this.rowHeaderCellsVirtual.push(rowHeaderCell);
+
+		rowDiv.appendChild(rowHeaderCell);
+
+		const fragment = document.createDocumentFragment();
 
 		rowData.forEach((cellvalue, cellIndex) => {
-			const cell = $("<div>", { class: "gtbl-value-cell", text: Util.toStringNullSafe(cellvalue)});
-			cell.on("mousedown", this.onCellMouseDown.bind(this));
-			cell.on("mouseup", this.onCellMouseUp.bind(this));
-			cell.on("mouseover", this.onCellMouseOver.bind(this));
-			cell.on("dblclick", this.onCellDblClick.bind(this));
+			const cell = document.createElement("div");
+			cell.classList.add("gtbl-value-cell");
+			cell.textContent = Util.toStringNullSafe(cellvalue);
+			this.assignHandler(cell, "mousedown", this.onCellMouseDown);
+			this.assignHandler(cell, "mouseup", this.onCellMouseUp);
+			this.assignHandler(cell, "mouseover", this.onCellMouseOver);
+			this.assignHandler(cell, "dblclick", this.onCellDblClick);
 
-			if(isFirstRow){
-				cell.width(this.columnWidths[cellIndex + 1] + "px");
-				cell.css("min-width",this.columnWidths[cellIndex + 1] + "px");
-			}
+			cell.style.width = this.columnWidths[cellIndex] + "px";
 
-			rowDiv.append(cell);
+			fragment.appendChild(cell);
 
 		});
+
+		rowDiv.appendChild(fragment);
 
 		return rowDiv;
 	}
 
 	getVisibleChildNodes(){
-		this.rowHeaderCells = [];
+		this.rowHeaderCellsVirtual = [];
 
-		return new Array(this.visibleNodesCount)
-					.fill(null)
-					.map((_, index) => this.createRow(index + this.startNode));
+		const fragment = document.createDocumentFragment();
+		this.visibleIndex.forEach((index) => fragment.appendChild(this.createRow(index)));
+
+		return fragment;
 	}
 
-	doVirtualScroll(e){
-
-		const getRowDataAt = (index) => {
+	getRowDataAt(index, rowNumber){
+		if(rowNumber == null){
 			return [index + 1].concat(this.rows[index]);
 		}
 
+		return [rowNumber + 1].concat(this.rows[index]);
+	}
+
+	changeRowValue(rowArray, arrayIndex, keepCurrent){
+
 		const addRow = (index) => {
-			const newItem = this.createRow(index);
-			this.visibleNodes.push(newItem);
-			this.viewport.append(newItem);
-		}
-
-		const changeRowValue = (rowArray, arrayIndex) => {
-
-			if(arrayIndex > this.visibleNodes.length - 1){
-				addRow(arrayIndex);
-			}
-
-			const rowIndex = arrayIndex + this.startNode;
-
-			rowArray.forEach((value, index) => {
-
-				const node = this.visibleNodes[arrayIndex][0].childNodes[index];
-				node.innerHTML = value;
-
-				// Update current cell
-				if(shouldMarkAsCurrent(rowIndex, index)){
-					this.markCurrent($(node), true);
-					if(this.currentSelectionMode == this.SelectionMode.ContentSelectable){
-						this.markCurrentCellAsSelectable();
-					}
-				}
-
-				// Update last selected cell
-				if(shouldChangeLast(rowIndex, index)){
-					this.last = this.toCellNode($(node));
-				}
-
-			});
+			const newRow = this.createRow(index);
+			this.visibleNodes.push(newRow);
+			this.table.appendChild(newRow);
 		}
 
 		const shouldMarkAsCurrent = (rowIndex, colIndex) => {
 
-			if(!this.current){
-				return false;
+			if(this.isSearching){
+				if(this.searchUtil.CurrentResult.RowIndex == rowIndex && this.searchUtil.CurrentResult.ColumnIndex == colIndex - 1){
+					return true;
+				}
 			}
 
-			if(this.current.Cell.RowIndex != rowIndex){
-				return false;
-			}
+			if(!this.current) return false;
 
-			if(this.current.Cell.ColumnIndex != colIndex - 1){
-				return false;
-			}
+			if(this.current.Cell.RowIndex != rowIndex) return false;
+
+			if(this.current.Cell.ColumnIndex != colIndex - 1) return false;
 
 			return true;
 		}
 
 		const shouldChangeLast = (rowIndex, colIndex) => {
 
-			if(!this.last){
-				return false;
+			if(this.isSearching){
+				if(this.searchUtil.CurrentResult.RowIndex == rowIndex && this.searchUtil.CurrentResult.ColumnIndex == colIndex - 1){
+					return true;
+				}
 			}
 
-			if(this.last.Cell.RowIndex != rowIndex){
-				return false;
-			}
+			if(!this.last) return false;
 
-			if(this.last.Cell.ColumnIndex != colIndex - 1){
-				return false;
-			}
+			if(this.last.Cell.RowIndex != rowIndex) return false;
+
+			if(this.last.Cell.ColumnIndex != colIndex - 1) return false;
 
 			return true;
 		}
+
+		if(arrayIndex > this.visibleNodes.length - 1){
+			addRow(arrayIndex);
+		}
+
+		const rowIndex = arrayIndex + this.startNode;
+
+		rowArray.forEach((value, index) => {
+
+			const node = this.visibleNodes[arrayIndex].childNodes[index];
+			if(index == 0){
+				node.style.height = this.getChildHeight(rowIndex) + "px"
+				node.childNodes[0].textContent = Util.toStringNullSafe(value);
+			}else{
+				node.textContent = Util.toStringNullSafe(value);
+			}
+
+			if(keepCurrent){
+				return;
+			}
+
+			// Update current cell
+			if(shouldMarkAsCurrent(rowIndex, index)){
+				this.markCurrent(node, true);
+
+				if(this.isEditing){
+					this.prepareEditor();
+				}
+			}
+
+			// Update last selected cell
+			if(shouldChangeLast(rowIndex, index)){
+				this.last = this.toCellNode(node);
+			}
+
+		});
+	}
+
+	doVirtualScroll(e){
 
 		this.prepareVirtualScroll(e.target.scrollTop, e.target.scrollLeft);
 
 		if(this.current){
 			this.clearCurrent();
-			this.clearSelectable();
 		}
 
-		this.alterTransform();
-
-		new Array(this.visibleNodesCount)
-			.fill(null)
-			.map((_, index) => getRowDataAt(index + this.startNode))
-			.forEach((row, rowIndex) => changeRowValue(row, rowIndex));
-
-		if(this.visibleNodesCount < this.visibleNodes.length - 1){
-			const count = (this.visibleNodes.length - 1) - this.visibleNodesCount;
-			this.visibleNodes.splice(this.visibleNodesCount, count).forEach(el => el[0].remove());
-			this.rowHeaderCells.splice(this.visibleNodesCount, count);
+		if(this.isEditing){
+			this.initEditor();
 		}
+
+		this.alterViewportOffset();
+
+		this.alterContent();
+
+		const count = (this.visibleNodes.length - 0) - this.visibleNodesCount;
+		this.visibleNodes.splice(this.visibleNodesCount, count).forEach(el => el.remove());
+		this.rowHeaderCellsVirtual.splice(this.visibleNodesCount, count);
 
 		this.changeHighlightByScroll();
 
@@ -385,18 +498,27 @@ class GridTable {
 		}
 	}
 
-	alterTransform(){
-		this.viewport.css("transform","translateY(" + this.nodeOffsetY + "px)");
-		this.rowHeaderCells.forEach(cell => cell.css("transform","translate3D(" + this.nodeOffsetX + "px,0px,0px)"));
+	alterContent(keepCurrent){
+		if(this.sorted){
+			this.visibleIndex.map((index, rowNumber) => this.getRowDataAt(index, rowNumber))
+							.forEach((row, rowIndex) => this.changeRowValue(row, rowIndex, keepCurrent));
+		}else{
+			this.visibleIndex.map(index => this.getRowDataAt(index))
+							.forEach((row, rowIndex) => this.changeRowValue(row, rowIndex, keepCurrent));
+		}
+	}
+
+	alterViewportOffset(){
+		this.table.style.top = this.nodeOffsetY + "px";
 	}
 
 	alterScrollPosition(top, left){
 		if(top != null){
-			this.rootElement.scrollTop(top);
+			this.viewport.scrollTop = top;
 		}
 
 		if(left != null){
-			this.rootElement.scrollLeft(left);
+			this.viewport.scrollLeft = left;
 		}
 	}
 
@@ -412,35 +534,43 @@ class GridTable {
 			anchor = this.current;
 		}
 
-		const scrollTop = this.rootElement.scrollTop();
-		const scrollLeft = this.rootElement.scrollLeft();
+		const scrollTop = this.viewport.scrollTop;
+		const scrollLeft = this.viewport.scrollLeft;
 
 		switch(direction){
-			case this.Direction.End:
-				this.alterScrollPosition(this.rootNode.scrollHeight, this.rootNode.scrollWidth);
+			case Direction.End:
+				this.alterScrollPosition(this.viewport.scrollHeight, this.viewport.scrollWidth);
 				break;
-			case this.Direction.Home:
+			case Direction.Home:
 				this.alterScrollPosition(0,0);
 				break;
-			case this.Direction.Left:
+			case Direction.Left:
 				this.alterScrollPosition(null, 0);
 				break;
-			case this.Direction.Right:
-				this.alterScrollPosition(null, this.rootNode.scrollWidth);
+			case Direction.Right:
+				this.alterScrollPosition(null, this.viewport.scrollWidth);
 				break;
-			case this.Direction.Up:
+			case Direction.Up:
 				this.alterScrollPosition(0);
 				break;
-			case this.Direction.Down:
-				this.alterScrollPosition(this.rootNode.scrollHeight);
+			case Direction.Down:
+				this.alterScrollPosition(this.viewport.scrollHeight);
 				break;
 		}
 
-		if(scrollTop != this.rootElement.scrollTop() || scrollLeft != this.rootElement.scrollLeft()){
+		if(scrollTop != this.viewport.scrollTop || scrollLeft != this.viewport.scrollLeft){
 			this.scrollCallback = this.createCallback(this.changeCellByCtrlArrowKey, {anchor, direction});
 		}else{
 			this.changeCellByCtrlArrowKey({anchor, direction});
 		}
+	}
+
+	indexOf(node){
+		return Array.prototype.indexOf.call(node.parentNode.childNodes, node);
+	}
+
+	rowIndexOf(node){
+		return Array.prototype.indexOf.call(this.rowHeaderCellsVirtual, node);
 	}
 
 	changeCellByCtrlArrowKey(args){
@@ -448,36 +578,36 @@ class GridTable {
 		let row, cell;
 
 		switch(args.direction){
-			case this.Direction.End:
-				row = this.visibleNodes[this.visibleNodes.length - 2].get(0);
-				cell = row.children[row.children.length - 1]
+			case Direction.End:
+				row = this.visibleNodes[this.visibleNodes.length - 2];
+				cell = row.childNodes[row.childNodes.length - 1]
 				break;
-			case this.Direction.Home:
-				row = this.visibleNodes[0].get(0);
-				cell = row.children[1];
+			case Direction.Home:
+				row = this.visibleNodes[0];
+				cell = row.childNodes[1];
 				break;
-			case this.Direction.Left:
-				row = this.visibleNodes[args.anchor.Node.parent().index()].get(0);
-				cell = row.children[1];
+			case Direction.Left:
+				row = this.visibleNodes[this.indexOf(args.anchor.Node.parentNode)];
+				cell = row.childNodes[1];
 				break;
-			case this.Direction.Right:
-				row = this.visibleNodes[args.anchor.Node.parent().index()].get(0);
-				cell = row.children[row.children.length - 1]
+			case Direction.Right:
+				row = this.visibleNodes[this.indexOf(args.anchor.Node.parentNode)];
+				cell = row.childNodes[row.childNodes.length - 1]
 				break;
-			case this.Direction.Up:
-				row = this.visibleNodes[0].get(0);
-				cell = row.children[args.anchor.Node.index()];
+			case Direction.Up:
+				row = this.visibleNodes[0];
+				cell = row.childNodes[this.indexOf(args.anchor.Node)];
 				break;
-			case this.Direction.Down:
-				row = this.visibleNodes[this.visibleNodes.length - 2].get(0);
-				cell = row.children[args.anchor.Node.index()];
+			case Direction.Down:
+				row = this.visibleNodes[this.visibleNodes.length - 2];
+				cell = row.childNodes[this.indexOf(args.anchor.Node)];
 				break;
 		}
 
 		if(this.shiftKey){
-			this.selectByShift($(cell));
+			this.selectByShift(cell);
 		}else{
-			this.selectByMouseDown($(cell));
+			this.selectByMouseDown(cell);
 		}
 	}
 
@@ -489,22 +619,22 @@ class GridTable {
 		const moveCellAllowed = (direction, cellNode) => {
 
 			switch(direction){
-				case this.Direction.Left:
+				case Direction.Left:
 					if(cellNode.Cell.ColumnIndex  <= 0){
 						return false;
 					}
 					break;
-				case this.Direction.Right:
+				case Direction.Right:
 					if(cellNode.Cell.ColumnIndex == this.header.length - 1){
 						return false;
 					}
 					break;
-				case this.Direction.Up:
+				case Direction.Up:
 					if(cellNode.Cell.RowIndex  == 0){
 						return false;
 					}
 					break;
-				case this.Direction.Down:
+				case Direction.Down:
 					if(cellNode.Cell.RowIndex + 1 == this.rows.length){
 						return false;
 					}
@@ -548,23 +678,23 @@ class GridTable {
 		}
 
 		switch(args.direction){
-			case this.Direction.Home:
-				cell = anchor.Node.parent().children().eq(1);
+			case Direction.Home:
+				cell = anchor.Node.parentNode.childNodes[1];
 				break;
-			case this.Direction.End:
-				cell = anchor.Node.parent().children().eq(this.header.length);
+			case Direction.End:
+				cell = anchor.Node.parentNode.childNodes[this.header.length];
 				break;
-			case this.Direction.Left:
-				cell = anchor.Node.prev();
+			case Direction.Left:
+				cell = anchor.Node.previousElementSibling;
 				break;
-			case this.Direction.Right:
-				cell = anchor.Node.next();
+			case Direction.Right:
+				cell = anchor.Node.nextElementSibling;
 				break;
-			case this.Direction.Up:
-				cell = anchor.Node.parent().prev().children().eq(anchor.Node.index());
+			case Direction.Up:
+				cell = anchor.Node.parentNode.previousElementSibling.childNodes[this.indexOf(anchor.Node)];
 				break;
-			case this.Direction.Down:
-				cell = anchor.Node.parent().next().children().eq(anchor.Node.index());
+			case Direction.Down:
+				cell = anchor.Node.parentNode.nextElementSibling.childNodes[this.indexOf(anchor.Node)];
 				break;
 		}
 
@@ -580,10 +710,12 @@ class GridTable {
 		let scrollRequired = false;
 		let scrollPositionLeft = null;
 		let scrollPositionTop = null;
+
+		const scrollTop = this.viewport.scrollTop;
+		const scrollLeft = this.viewport.scrollLeft;
+
 		const positionTop = this.childPositions[cellNode.Cell.RowIndex];
-		const positionLeft = cellNode.Node.position().left;
-		const scrollTop = this.rootElement.scrollTop();
-		const scrollLet = this.rootElement.scrollLeft();
+		const positionLeft = this.columnPositions[cellNode.Cell.ColumnIndex];
 
 		// hidden below
 		if(positionTop > scrollTop + this.visibleViewportHeight){
@@ -598,15 +730,15 @@ class GridTable {
 		}
 
 		// hidden left
-		if(scrollLet > positionLeft){
-			scrollPositionLeft = positionLeft - this.columnWidths[0];
+		if(scrollLeft > positionLeft){
+			scrollPositionLeft = positionLeft - this.rowHeaderWidth;
 			scrollRequired = true;
 		}
 
 		// hidden right
-		if(this.rootElement.outerWidth(true) + scrollLet < positionLeft){
-			const position = positionLeft - (this.rootElement.outerWidth(true) + scrollLet);
-			const barWidth = this.rootElement.width() - this.rootNode.clientWidth;
+		if(Util.css(this.viewport, "width") + scrollLeft < positionLeft){
+			const position = positionLeft - (Util.css(this.viewport, "width") + scrollLeft);
+			const barWidth = Util.css(this.viewport, "width") - this.viewport.clientWidth;
 			scrollPositionLeft = positionLeft - position + barWidth;
 			scrollRequired = true;
 		}
@@ -619,7 +751,7 @@ class GridTable {
 	}
 
 	hasFocus(){
-		return this.focusHolder.is(":focus");
+		return document.activeElement == this.focusHolder;
 	}
 
 	setFocus(){
@@ -651,9 +783,9 @@ class GridTable {
 
 		this.current = this.toCellNode(cell);
 
-		this.current.Node.addClass("current");
-		this.rowHeaderCells[cell.parent().index()].addClass("row-highlight");
-		this.columnHeaderCells[cell.index() - 1].addClass("row-highlight");
+		this.current.Node.classList.add("current");
+		this.rowHeaderCellsVirtual[this.indexOf(cell.parentNode)].classList.add("row-highlight");
+		this.columnHeaderCells[this.indexOf(cell) - 1].classList.add("row-highlight");
 
 		if(preventScroll){
 			return;
@@ -664,22 +796,14 @@ class GridTable {
 	}
 
 	clearCurrent(){
-		this.current.Node.removeClass("current");
-	}
-
-	markCurrentCellAsSelectable(){
-		this.current.Node.addClass("selectable");
-	}
-
-	clearSelectable(){
-		this.viewport.find(".selectable").removeClass("selectable");
+		this.current.Node.classList.remove("current");
 	}
 
 	changeHighlight(cell) {
 
 		const container = this.container;
-		const cellIndex = cell.index() - 1;
-		const rowIndex = cell.parent().index();
+		const cellIndex = this.indexOf(cell) - 1;
+		const rowIndex = this.indexOf(cell.parentNode);
 
 		this.resetSelection();
 
@@ -690,17 +814,17 @@ class GridTable {
 
 		for (let i = rowStart; i <= rowEnd; i++) {
 
-			const row = container.find(".gtbl-detail").eq(i);
+			const row = container.querySelectorAll(".gtbl-detail")[i];
 
-			const rowCells = row.find(".gtbl-value-cell");
+			const rowCells = row.querySelectorAll(".gtbl-value-cell");
 
-			this.rowHeaderCells[i].addClass("row-highlight");
+			this.rowHeaderCellsVirtual[i].classList.add("row-highlight");
 
 			for (let j = cellStart; j <= cellEnd; j++) {
 
-				rowCells.eq(j).addClass("highlight");
+				rowCells[j].classList.add("highlight");
 
-				this.columnHeaderCells[j].addClass("row-highlight");
+				this.columnHeaderCells[j].classList.add("row-highlight");
 			}
 		}
 
@@ -711,41 +835,43 @@ class GridTable {
 
 		let paddingValue = 0;
 
-		const position = target.position();
-		const scrollLeft = this.rootElement.scrollLeft();
+		const cell = this.toCellNode(target).Cell;
+		const scrollLeft = this.viewport.scrollLeft;
+		const positionLeft = this.columnPositions[cell.ColumnIndex]
 
-		if(this.lastPostion.X == position.left){
+		if(this.lastPostion.X == positionLeft){
 			return;
 		}
 
-		this.lastPostion.X = position.left;
+		this.lastPostion.X = positionLeft;
 
-		if(scrollLeft + position.left - this.columnWidths[0] <= 0){
+		if(scrollLeft + positionLeft - this.rowHeaderWidth <= 0){
 			return;
 		}
 
-		if(this.rootNode.scrollWidth == target.outerWidth(true) + position.left){
-			this.alterScrollPosition(null, this.rootNode.scrollWidth);
+		if(this.viewport.scrollWidth == positionLeft + this.columnWidths[cell.ColumnIndex]){
+			this.alterScrollPosition(null, this.viewport.scrollWidth);
 			return;
 		}
 
-		if(position.left - target.prev().outerWidth(true) == 0){
+		if(scrollLeft > 0 && cell.ColumnIndex == 0){
 			this.alterScrollPosition(null, 0);
 			return;
 		}
 
-		if(scrollLeft >= position.left){
+		if(scrollLeft >= positionLeft){
 			if(padding){
-				paddingValue = this.columnWidths[this.last.Cell.ColumnIndex]
+				paddingValue = this.columnWidths[this.last.Cell.ColumnIndex - 1]
 			}
-			this.alterScrollPosition(null, position.left - this.columnWidths[0] - paddingValue);
+
+			this.alterScrollPosition(null, positionLeft - this.rowHeaderWidth - paddingValue);
 			return;
 		}
 
-		if(scrollLeft + this.rootElement.outerWidth(true) <= position.left + target.outerWidth(true) + this.getScrollbarHeight()){
-			const scrollby = ((position.left + target.outerWidth(true)) + this.getScrollbarHeight()) - (scrollLeft + this.rootElement.outerWidth(true));
+		if(scrollLeft + Util.css(this.viewport, "width") <= this.columnPositions[cell.ColumnIndex + 1] + this.getScrollbarHeight()){
+			const scrollby = (this.columnPositions[cell.ColumnIndex + 1] + this.getScrollbarHeight()) - (scrollLeft + Util.css(this.viewport, "width"));
 			if(padding){
-				paddingValue = this.columnWidths[this.last.Cell.ColumnIndex + 1]
+				paddingValue = this.columnWidths[this.last.Cell.ColumnIndex]
 			}
 			this.alterScrollPosition(null, scrollLeft + scrollby + paddingValue);
 			return;
@@ -757,9 +883,9 @@ class GridTable {
 
 		let paddingValue = 0;
 
-		const targetCellNode = this.toCellNode(target);
-		const positionTop = this.childPositions[targetCellNode.Cell.RowIndex]
-		const scrollTop = this.rootElement.scrollTop();
+		const cell = this.toCellNode(target).Cell;
+		const positionTop = this.childPositions[cell.RowIndex]
+		const scrollTop = this.viewport.scrollTop;
 
 		if(this.lastPostion.Y == positionTop){
 			return;
@@ -771,12 +897,12 @@ class GridTable {
 			return;
 		}
 
-		if(this.rootNode.scrollHeight == target.outerHeight(true) + positionTop){
-			this.alterScrollPosition(this.rootNode.scrollHeight);
+		if(this.totalContentHeight == positionTop + this.getChildHeight(cell.RowIndex)){
+			this.alterScrollPosition(this.viewport.scrollHeight);
 			return;
 		}
 
-		if(positionTop - this.headerHeight == 0){
+		if(scrollTop > 0 && cell.RowIndex == 0){
 			this.alterScrollPosition(0);
 			return;
 		}
@@ -789,9 +915,8 @@ class GridTable {
 			return;
 		}
 
-		if(scrollTop + this.visibleViewportHeight <= positionTop + this.getChildHeight(targetCellNode.Cell.RowIndex) + this.getScrollbarHeight()){
-
-			const scrollby = (positionTop + this.getChildHeight(targetCellNode.Cell.RowIndex)) - (scrollTop + this.visibleViewportHeight) + this.getScrollbarHeight();
+		if(scrollTop + this.visibleViewportHeight <= this.childPositions[cell.RowIndex + 1] + this.getScrollbarHeight()){
+			const scrollby = (this.childPositions[cell.RowIndex + 1] + this.getScrollbarHeight()) - (scrollTop + this.visibleViewportHeight);
 
 			if(padding){
 				paddingValue = this.getChildHeight(this.last.Cell.RowIndex + 1);
@@ -806,28 +931,22 @@ class GridTable {
 	}
 
 	getScrollbarHeight(){
-		return this.rootHeight - this.rootNode.clientHeight;
+		return this.rootHeight - this.viewport.clientHeight;
 	}
 
 	changeHighlightByScroll(){
 
 		const changeHighlightRequired = () => {
 
-			if(this.currentSelectionMode == this.SelectionMode.All || this.currentSelectionMode == this.SelectionMode.Column){
+			if(this.currentSelectionMode == SelectionMode.All || this.currentSelectionMode == SelectionMode.Column){
 				return true;
 			}
 
-			if(this.bypassHighlightByScroll){
-				return false;
-			}
+			if(this.bypassHighlightByScroll) return false;
 
-			if(!this.current || !this.last){
-				return false;
-			}
+			if(!this.current || !this.last) return false;
 
-			if(this.current.Cell.equals(this.last.Cell)){
-				return false;
-			}
+			if(this.current.Cell.equals(this.last.Cell)) return false;
 
 			return true;
 
@@ -835,76 +954,63 @@ class GridTable {
 
 		const updateVirtualSelectionRequired = () => {
 
-			if(this.currentSelectionMode == this.SelectionMode.All || this.currentSelectionMode == this.SelectionMode.Column){
+			if(this.currentSelectionMode == SelectionMode.All || this.currentSelectionMode == SelectionMode.Column){
 				return true;
 			}
 
 			if(this.current.Cell.RowIndex >= this.last.Cell.RowIndex){
 
-				if(this.current.Cell.RowIndex < this.startNode){
-					return false;
-				}
+				if(this.current.Cell.RowIndex < this.startNode) return false;
 
-				if(this.last.Cell.RowIndex > this.startNode + this.visibleNodesCount - 1){
-					return false;
-				}
+				if(this.last.Cell.RowIndex > this.startNode + this.visibleNodesCount - 1) return false;
 
 				return true;
 
 			}else{
 
-				if(this.last.Cell.RowIndex < this.startNode){
-					return false;
-				}
+				if(this.last.Cell.RowIndex < this.startNode) return false;
 
-				if(this.current.Cell.RowIndex  > this.startNode + this.visibleNodesCount - 1){
-					return false;
-				}
+				if(this.current.Cell.RowIndex  > this.startNode + this.visibleNodesCount - 1) return false;
 
 				return true;
 			}
 		}
 
-		if(!changeHighlightRequired()){
-			return true;
-		}
+		if(!changeHighlightRequired()) return true;
 
 		this.clearSelection();
 
-		if(!updateVirtualSelectionRequired()){
-			return true;
-		}
+		if(!updateVirtualSelectionRequired()) return true;
 
 		this.updateVirtualSelection(this.last);
 
-		const container = this.container
 		const rowStart = Math.min(this.virtualSelection.End.RowIndex, this.virtualSelection.Start.RowIndex);
 		const rowEnd = Math.max(this.virtualSelection.End.RowIndex, this.virtualSelection.Start.RowIndex);
 		const cellStart = Math.min(this.virtualSelection.End.ColumnIndex, this.virtualSelection.Start.ColumnIndex);
 		const cellEnd = Math.max(this.virtualSelection.End.ColumnIndex, this.virtualSelection.Start.ColumnIndex);
 
-		if(this.currentSelectionMode == this.SelectionMode.All){
-			this.cornerCell.addClass("row-highlight");
+		if(this.currentSelectionMode == SelectionMode.All){
+			this.cornerCell.classList.add("row-highlight");
 		}
 
-		if(this.currentSelectionMode == this.SelectionMode.Row){
-			this.columnHeaderCells.forEach(cell => cell.addClass("row-highlight"));
+		if(this.currentSelectionMode == SelectionMode.Row){
+			this.columnHeaderCells.forEach(cell => cell.classList.add("row-highlight"));
 		}
 
 		for (let i = rowStart; i <= rowEnd; i++) {
 
-			const row = container.find(".gtbl-detail").eq(i);
+			const row = this.container.querySelectorAll(".gtbl-detail")[i];
 
-			const rowCells = row.find(".gtbl-value-cell");
+			const rowCells = row.querySelectorAll(".gtbl-value-cell");
 
-			this.rowHeaderCells[i].addClass("row-highlight");
+			this.rowHeaderCellsVirtual[i].classList.add("row-highlight");
 
 			for (let j = cellStart; j <= cellEnd; j++) {
 
-				rowCells.eq(j).addClass("highlight");
+				rowCells[j].classList.add("highlight");
 
-				if(this.currentSelectionMode != this.SelectionMode.Row){
-					this.columnHeaderCells[j].addClass("row-highlight");
+				if(this.currentSelectionMode != SelectionMode.Row){
+					this.columnHeaderCells[j].classList.add("row-highlight");
 				}
 			}
 		}
@@ -913,7 +1019,7 @@ class GridTable {
 	updateVirtualSelection(target){
 
 		// All cell selection
-		if(this.currentSelectionMode == this.SelectionMode.All){
+		if(this.currentSelectionMode == SelectionMode.All){
 			this.virtualSelection.Start.RowIndex = 0;
 			this.virtualSelection.End.RowIndex = this.visibleNodesCount - 1;
 			this.virtualSelection.Start.ColumnIndex = 0;
@@ -922,7 +1028,7 @@ class GridTable {
 		}
 
 		// Column selection
-		if(this.currentSelectionMode == this.SelectionMode.Column){
+		if(this.currentSelectionMode == SelectionMode.Column){
 			this.virtualSelection.Start.RowIndex = 0;
 			this.virtualSelection.End.RowIndex = this.visibleNodesCount - 1;
 			return;
@@ -944,14 +1050,14 @@ class GridTable {
 
 	selectAll(){
 
-		this.currentSelectionMode = this.SelectionMode.All
+		this.currentSelectionMode = SelectionMode.All
 
-		this.cornerCell.addClass("row-highlight");
+		this.cornerCell.classList.add("row-highlight");
 
 		this.visibleNodes.forEach(node => {
-			Array.from(node.children()).forEach((cell, index) => {
+			node.childNodes.forEach((cell, index) => {
 				if(index > 0){
-					this.highlightSelection($(cell));
+					this.highlightSelection(cell);
 				}
 			});
 		})
@@ -961,20 +1067,20 @@ class GridTable {
 
 	selectRow(rowHeaderCell){
 
-		this.currentSelectionMode = this.SelectionMode.Row
+		this.currentSelectionMode = SelectionMode.Row
 
-		const selectedRowIndex = parseInt(rowHeaderCell.innerHTML) - 1;
+		const selectedRowIndex = parseInt(rowHeaderCell.textContent) - 1;
 
-		this.markCurrent($(rowHeaderCell).next(), true);
-		this.last = this.toCellNode($(rowHeaderCell).parent().children().eq(this.header.length));
+		this.markCurrent(rowHeaderCell.nextElementSibling, true);
+		this.last = this.toCellNode(rowHeaderCell.parentNode.childNodes[this.header.length]);
 
-		this.columnHeaderCells.forEach(cell => cell.addClass("row-highlight"));
+		this.columnHeaderCells.forEach(cell => cell.classList.add("row-highlight"));
 
 		rowHeaderCell.parentNode.childNodes.forEach((cell, index) => {
 			if(index > 0){
-				$(cell).addClass("highlight");
+				cell.classList.add("highlight");
 			}else{
-				$(cell).addClass("row-highlight");
+				cell.classList.add("row-highlight");
 			}
 		});
 
@@ -984,19 +1090,18 @@ class GridTable {
 
 	selectColumn(columnCell){
 
-		this.currentSelectionMode = this.SelectionMode.Column
+		this.currentSelectionMode = SelectionMode.Column
 
-		const cell = $(columnCell);
-		const columnIndex = cell.index();
+		const columnIndex = this.indexOf(columnCell);
 
-		this.markCurrent(this.visibleNodes[0].children().eq(columnIndex), true);
+		this.markCurrent(this.visibleNodes[0].childNodes[columnIndex], true);
 		this.current.Cell.RowIndex = 0;
-		this.last = this.toCellNode(this.visibleNodes[this.visibleNodes.length - 1].children().eq(columnIndex));
+		this.last = this.toCellNode(this.visibleNodes[this.visibleNodes.length - 1].childNodes[columnIndex]);
 
-		cell.addClass("row-highlight");
+		columnCell.classList.add("row-highlight");
 		this.visibleNodes.forEach((row, index) => {
-			this.rowHeaderCells[index].addClass("row-highlight");
-			row.children().eq(columnIndex).addClass("highlight");
+			this.rowHeaderCellsVirtual[index].classList.add("row-highlight");
+			row.childNodes[columnIndex].classList.add("highlight");
 		});
 
 		this.virtualSelection.Start.ColumnIndex = columnIndex - 1;
@@ -1004,25 +1109,26 @@ class GridTable {
 
 		this.updateSelection(0, this.rows.length - 1, columnIndex - 1, columnIndex - 1);
 		this.setFocus();
+
 	}
 
 	highlightSelection(selectedCell){
-		selectedCell.addClass("highlight");
-		this.rowHeaderCells[selectedCell.parent().index()].addClass("row-highlight");
-		this.columnHeaderCells.forEach(cell => cell.addClass("row-highlight"));
+		selectedCell.classList.add("highlight");
+		this.rowHeaderCellsVirtual[this.indexOf(selectedCell.parentNode)].classList.add("row-highlight");
+		this.columnHeaderCells.forEach(cell => cell.classList.add("row-highlight"));
 	}
 
 	clearSelection(){
-		this.cornerCell.removeClass("row-highlight");
-		this.viewport.find(".highlight").removeClass("highlight");
-		this.rowHeaderCells.forEach(cell => cell.removeClass("row-highlight"));
-		this.columnHeaderCells.forEach(cell => cell.removeClass("row-highlight"));
+		this.cornerCell.classList.remove("row-highlight");
+		this.table.querySelectorAll(".highlight").forEach(el => el.classList.remove("highlight"));
+		this.rowHeaderCellsVirtual.forEach(cell => cell.classList.remove("row-highlight"));
+		this.columnHeaderCells.forEach(cell => cell.classList.remove("row-highlight"));
 	}
 
 	toCellNode(cell){
 		return	{
 			Node: cell,
-			Cell: new Cell(cell.parent().index() + this.startNode, cell.index() - 1)
+			Cell: new Cell(this.indexOf(cell.parentNode) + this.startNode, this.indexOf(cell) - 1)
 		};
 	}
 
@@ -1035,116 +1141,69 @@ class GridTable {
 		this.selection = new Selection();
 	}
 
-	copyToClipboard(e){
-
-		e.preventDefault();
-
-		const escapeNewLine = (value) => {
-
-			const stringValue = Util.toStringNullSafe(value);
-
-			if(stringValue.includes("\n")){
-				return '"' + stringValue + '"';
-			}
-
-			return stringValue;
-		}
-
-		const dataArray = [];
-
-		for(let row = this.selection.Start.RowIndex; row <= this.selection.End.RowIndex; row++){
-			dataArray.push(
-				this.rows[row].slice(this.selection.Start.ColumnIndex, this.selection.End.ColumnIndex + 1)
-								.map(item => escapeNewLine(item)).join("\t")
-			);
-		}
-
-		const clipboardData = event.clipboardData || window.clipboardData || event.originalEvent.clipboardData;
-
-		clipboardData.setData("text/plain" , dataArray.join("\n"));
-	}
-
 	resetViewport(){
 
 		this.current = null;
 		this.last = null;
 		this.resetSelection();
 
-		this.itemCount = this.rows.length;
+		this.itemCount = this.filteredIndex.length;
 		this.prepareVirtualScroll(0, 0, true)
-		this.container.css("height", this.totalContentHeight);
+		this.container.style.height = this.totalContentHeight + "px";
 
-		this.alterTransform();
+		this.alterViewportOffset();
 
-		this.viewport.empty();
-		this.visibleNodes = this.getVisibleChildNodes();
-		this.viewport.append(this.visibleNodes);
-		this.rootElement.scrollTop(0);
-		this.rootElement.scrollLeft(0);
+		this.table.innerHTML = "";
+		this.table.appendChild(this.getVisibleChildNodes());
+		this.visibleNodes = Array.from(this.table.childNodes);
+		this.alterScrollPosition(0,0);
 	}
 
-	// =================================
-	//  Event handlers
-	// ---------------------------------
-
-	onRootScroll(e){
-
-		if (this.animationFrame) {
-			window.cancelAnimationFrame(this.animationFrame);
+	resizeColumn(e){
+		e.stopPropagation();
+		e.preventDefault();
+		const diff = e.pageX - this.lastSliderPosition;
+		this.lastSliderPosition = e.pageX;
+		const currentWidth = Util.css(this.resizingCell.Node, "width");
+		const newWidth = currentWidth + diff;
+		if(newWidth > 2){
+			this.resizingCell.Node.style.width = newWidth + "px";
+			this.firstRowCell.style.width = newWidth + "px";
 		}
-
-		this.animationFrame = window.requestAnimationFrame(() => this.doVirtualScroll(e));
 	}
 
-	onDocumentMouseDown(e) {
-		this.isDragging = false;
-		this.clearSelectable();
-		this.resetInterval();
+	resizeRow(e){
+		e.stopPropagation();
+		e.preventDefault();
+		const diff = e.pageY - this.lastSliderPosition;
+		this.lastSliderPosition = e.pageY;
+		const currentHeight = Util.css(this.resizingCell.Node, "height");
+		const newHeight = currentHeight + diff;
+		if(newHeight > 2){
+			this.resizingCell.Node.style.height = newHeight + "px";
+		}
 	}
 
-	onDocumentMouseUp(e) {
-		this.isDragging = false;
-		this.resetInterval();
+	moveSlidebar(e){
+		if(!this.isResizing) return;
+
+		if (this.resizeAnimationFrame) {
+			window.cancelAnimationFrame(this.resizeAnimationFrame);
+		}
+
+		this.resizeAnimationFrame = window.requestAnimationFrame(() => this.resizeFrame(e));
 	}
 
-	onDocumentMouseMove(e){
-
-		const getDirection = (e) => {
-
-			const rect = this.rootNode.getBoundingClientRect();
-
-			if(e.clientX < rect.left){
-				return this.Direction.Left;
-			}
-
-			if(e.clientX > this.rootElement.width()){
-				return this.Direction.Right;
-			}
-
-			if(e.clientY < rect.top){
-				return this.Direction.Up;
-			}
-
-			if(e.clientY > rect.top){
-				return this.Direction.Down;
-			}
-
-			return null;
-
+	updateColumnInfo(){
+		this.rowHeaderWidth = this.sizeBase.widths[0];
+		this.columnWidths = this.sizeBase.widths.filter((e,i) => i > 0);
+		this.columnPositions = [this.rowHeaderWidth];
+		for (let i = 1; i < this.columnWidths.length; i++) {
+			this.columnPositions.push(this.columnPositions[i - 1] + this.columnWidths[i - 1]);
 		}
 
-		if(!this.hasFocus() || !this.isDragging){
-			return true;
-		}
+		this.columnValues = this.sizeBase.baseData.map(e => Util.uniq(e));
 
-		if(e.target.classList.contains("gtbl-value-cell") || e.target.classList.contains("gtbl-header-cell")){
-			this.resetInterval();
-			return true;
-		}
-
-		this.resetInterval();
-
-		this.scrollInterval = window.setInterval(this.keepScroll.bind(this), 50, getDirection(e.originalEvent));
 	}
 
 	keepScroll(direction){
@@ -1155,27 +1214,27 @@ class GridTable {
 			const col = this.last.Cell.ColumnIndex;
 
 			switch(direction){
-				case this.Direction.Up:
+				case Direction.Up:
 					if(row > 0){
-						return this.last.Node.parent().prev().children().eq(this.last.Node.index());
+						return this.last.Node.parentNode.previousElementSibling.childNodes[this.indexOf(this.last.Node)];
 					}else{
 						return null;
 					}
-				case this.Direction.Down:
+				case Direction.Down:
 					if(row < this.rows.length - 1){
-						return this.last.Node.parent().next().children().eq(this.last.Node.index());
+						return this.last.Node.parentNode.nextElementSibling.childNodes[this.indexOf(this.last.Node)];
 					}else{
 						return null;
 					}
-				case this.Direction.Left:
+				case Direction.Left:
 					if(col > 0){
-						return this.last.Node.prev();
+						return this.last.Node.previousElementSibling
 					}else{
 						return null;
 					}
-				case this.Direction.Right:
+				case Direction.Right:
 					if(col < this.header.length - 1){
-						return this.last.Node.next();
+						return this.last.Node.nextElementSibling;
 					}else{
 						return null;
 					}
@@ -1187,12 +1246,12 @@ class GridTable {
 			const nextCellNode = this.toCellNode(nextCell);
 			let position;
 
-			if(!nextCellNode.Node[0]){
+			if(!nextCellNode.Node){
 				switch(direction){
-					case this.Direction.Up:
+					case Direction.Up:
 						position = this.childPositions[this.startNode - 1];
 						break;
-					case this.Direction.Down:
+					case Direction.Down:
 						position = this.childPositions[this.endNode + 1];
 						break;
 				}
@@ -1227,16 +1286,16 @@ class GridTable {
 		if(!args.nextCell){
 
 			switch(args.direction){
-				case this.Direction.Up:
-					args.nextCell = this.visibleNodes[0].children().eq(this.last.Node.index());
+				case Direction.Up:
+					args.nextCell = this.visibleNodes[0].childNodes[this.indexOf(this.last.Node)];
 					break;
-				case this.Direction.Down:
-					args.nextCell = this.visibleNodes[this.visibleNodes.length - 1].children().eq(this.last.Node.index());
+				case Direction.Down:
+					args.nextCell = this.visibleNodes[this.visibleNodes.length - 1].childNodes[this.indexOf(this.last.Node)];
 					break;
 			}
 		}
 
-		args.nextCell.trigger('mouseover');
+		args.nextCell.dispatchEvent(this.mouseoverEvent);
 	}
 
 	alterLast(cell){
@@ -1252,6 +1311,120 @@ class GridTable {
 		}
 	}
 
+	// =================================
+	//  Event handlers
+	// ---------------------------------
+
+	onRootScroll(e){
+
+		const left = e.target.scrollLeft;
+		const top = e.target.scrollTop;
+		if(this.scrollPosition.X != left){
+			if(this.dropdown.IsOpened){
+				this.dropdown.close();
+			}
+		}
+		this.scrollPosition.X = left;
+		this.scrollPosition.Y = top;
+
+		if (this.animationFrame) {
+			window.cancelAnimationFrame(this.animationFrame);
+		}
+
+		this.animationFrame = window.requestAnimationFrame(() => this.doVirtualScroll(e));
+	}
+
+	onSlidebarMousedown(e){
+		this.isResizing = true;
+		this.currentResizeMode = ResizeMode.Column;
+		this.resizeFrame = this.resizeColumn;
+		this.lastSliderPosition = e.pageX;
+		this.resizingCell = this.toCellNode(e.target.parentNode);
+		this.resizingCell.Node.classList.add("noselect");
+		this.viewport.style.cursor = "col-resize";
+		this.firstRowCell = this.visibleNodes[0].childNodes[this.indexOf(this.resizingCell.Node)];
+	}
+
+	onRowSlidebarMousedown(e){
+		this.isResizing = true;
+		this.currentResizeMode = ResizeMode.Row;
+		this.resizeFrame = this.resizeRow;
+		this.lastSliderPosition = e.pageY;
+		this.resizingCell = this.toCellNode(e.target.parentNode)
+		this.resizingCell.Node.classList.add("noselect");
+		this.viewport.style.cursor = "row-resize";
+	}
+
+	onDocumentMouseDown(e) {
+		this.isDragging = false;
+		this.resetInterval();
+	}
+
+	onDocumentMouseUp(e) {
+		this.isDragging = false;
+		this.resetInterval();
+
+		if(this.currentResizeMode == ResizeMode.Row){
+			this.sizeBase.heights[this.resizingCell.Cell.RowIndex] = Util.css(this.resizingCell.Node, "height");
+			this.rowHeaderCellsVirtual[this.rowIndexOf(this.resizingCell.Node)].style.height = Util.css(this.resizingCell.Node, "height")  + "px";
+			this.prepareVirtualScroll(this.viewport.scrollTop, this.viewport.scrollLeft, true);
+			this.container.style.height = this.totalContentHeight + "px";
+			this.alterViewportOffset();
+		}else if(this.currentResizeMode == ResizeMode.Column){
+			this.sizeBase.widths[this.resizingCell.Cell.ColumnIndex + 1] = Util.css(this.resizingCell.Node, "width");
+			this.columnHeaderCells[this.resizingCell.Cell.ColumnIndex].style.width = Util.css(this.resizingCell.Node, "width")  + "px";
+			this.updateColumnInfo();
+		}
+
+		if(this.isResizing){
+			this.isResizing = false;
+			this.currentResizeMode = ResizeMode.None;
+			this.resizingCell.Node.classList.remove("noselect");
+			this.viewport.style.cursor = "default";
+		}
+	}
+
+	onDocumentMouseMove(e){
+
+		const getDirection = (e) => {
+
+			const rect = this.viewport.getBoundingClientRect();
+
+			if(e.clientX < rect.left){
+				return Direction.Left;
+			}
+
+			if(e.clientX > Util.css(this.viewport, "width")){
+				return Direction.Right;
+			}
+
+			if(e.clientY < rect.top){
+				return Direction.Up;
+			}
+
+			if(e.clientY > rect.top){
+				return Direction.Down;
+			}
+
+			return null;
+
+		}
+
+		this.moveSlidebar(e);
+
+		if(!this.hasFocus() || !this.isDragging){
+			return true;
+		}
+
+		if(e.target.classList.contains("gtbl-value-cell") || e.target.classList.contains("gtbl-header-cell")){
+			this.resetInterval();
+			return true;
+		}
+
+		this.resetInterval();
+
+		this.scrollInterval = window.setInterval(this.keepScroll.bind(this), 50, getDirection(e));
+	}
 
 	onDocumentCopy(e){
 		if(this.hasFocus()){
@@ -1264,85 +1437,222 @@ class GridTable {
 		this.selectAll();
 	}
 
-	onFocusHolderKeyUp(e){
-		if(this.shiftKey && e.keyCode == 16){
-			this.isDragging = false;
+	onCloneHeaderClick(e){
+		if(this.isEditing){
+			this.endEdit();
+		}
+		this.selectRow(this.rowHeaderCellsVirtual[this.indexOf(this.current.Node.parentNode)]);
+	}
+
+	onEditorKeydown(e){
+
+		if(e.key == "Enter"){
+
+			e.preventDefault();
+
+			if(e.altKey || e.ctrlKey){
+				const value = this.editor.value + "\n";
+				this.editor.value = value;
+				const size = this.calculateEditorSize(value + "\n");
+				this.editor.style.height = size.height + "px";
+			}else{
+				this.endEdit();
+				this.moveCellByArrowKey(Direction.Down, false);
+			}
+
+		}
+
+	}
+
+	onEditorKeypress(e){
+		const size = this.calculateEditorSize(this.editor.value + e.key);
+		this.editor.style.width = size.width + "px";
+		this.editor.style.height = size.height + "px";
+	}
+
+	onFocusHolderPaste(e){
+		e.preventDefault();
+		const pastedData = Util.getClipboardText(e);
+		this.beginEdit(pastedData);
+		const size = this.calculateEditorSize(this.editor.value);
+		this.editor.style.width = size.width + "px";
+		this.editor.style.height = size.height + "px";
+	}
+
+	onEditorPaste(e){
+		e.preventDefault();
+		const pastedData = Util.getClipboardText(e);
+		const currentText = this.editor.value;
+		const caretPosition = this.editor.selectionStart;
+		const newValue = currentText.slice(0, caretPosition) + pastedData + currentText.slice(caretPosition)
+		this.editor.value = newValue;
+
+		const size = this.calculateEditorSize(this.editor.value);
+		this.editor.style.width = size.width + "px";
+		this.editor.style.height = size.height + "px";
+	}
+
+	onEditorBlur(e){
+		if(this.isEditing){
+			this.endEdit();
 		}
 	}
 
-	onFocusHolderKeyDown(e){
+	onFocusHolderKeyUp(e){
 
-		if(!this.hasFocus()){
-			return true;
+		if(this.shiftKey && e.key == "Shift"){
+			this.isDragging = false;
 		}
 
-		// Ctrl + A
-		if (e.ctrlKey && e.key === "a" && this.current) {
-			this.selectAll();
+		if(e.key == "F2"){
+			this.beginEdit();
 			return false;
+		}
+	}
+
+	onFocusHolderKeydown(e){
+
+		if(!this.hasFocus()) return true;
+
+		if (e.ctrlKey && e.key === "a") {
+			e.preventDefault();
+			this.selectAll();
+			return;
+		}
+
+		if(e.ctrlKey && e.key === "z"){
+			e.preventDefault();
+			this.undoEdit();
+			return;
+		}
+
+		if(e.ctrlKey && e.key === "y"){
+			e.preventDefault();
+			this.redoEdit();
+			return;
+		}
+
+		if(e.key == "Enter"){
+			e.preventDefault();
+			this.moveCellByArrowKey(Direction.Down, false);
+			return;
+		}
+
+		if(e.key == "F3"){
+			if(this.dialog.style.display == "block"){
+
+				e.preventDefault();
+				if(e.shiftKey){
+					this.doSearch(Direction.Up);
+				}else{
+					this.doSearch(Direction.Down);
+				}
+				return;
+			}
+		}
+
+		if(e.ctrlKey && e.key == "f"){
+			e.preventDefault();
+			this.openSearchDialog();
+			this.dialog.childNodes[0].focus();
+			return;
+		}
+
+		if(e.key == "Escape"){
+			e.preventDefault();
+			this.closeSearchDialog();
 		}
 
 		if(e.ctrlKey){
-			switch(e.keyCode){
-				// Ctrl + End
-				case 35:
-					this.moveCellByCtrlArrowKey(this.Direction.End, e.shiftKey);
+			switch(e.key){
+				case "End":
+					e.preventDefault();
+					this.moveCellByCtrlArrowKey(Direction.End, e.shiftKey);
 					return false;
-				// Ctrl + Home
-				case 36:
-					this.moveCellByCtrlArrowKey(this.Direction.Home, e.shiftKey);
+				case "Home":
+					e.preventDefault();
+					this.moveCellByCtrlArrowKey(Direction.Home, e.shiftKey);
 					return false;
-				// Ctrl + Left
-				case 37:
-					this.moveCellByCtrlArrowKey(this.Direction.Left, e.shiftKey);
+				case "ArrowLeft":
+					e.preventDefault();
+					this.moveCellByCtrlArrowKey(Direction.Left, e.shiftKey);
 					return false;
-				// Ctrl + Right
-				case 39:
-					this.moveCellByCtrlArrowKey(this.Direction.Right, e.shiftKey);
+				case "ArrowRight":
+					e.preventDefault();
+					this.moveCellByCtrlArrowKey(Direction.Right, e.shiftKey);
 					return false;
-				// Ctrl + Up
-				case 38:
-					this.moveCellByCtrlArrowKey(this.Direction.Up, e.shiftKey);
+				case "ArrowUp":
+					e.preventDefault();
+					this.moveCellByCtrlArrowKey(Direction.Up, e.shiftKey);
 					return false;
-				// Ctrl + Down
-				case 40:
-					this.moveCellByCtrlArrowKey(this.Direction.Down, e.shiftKey);
+				case "ArrowDown":
+					e.preventDefault();
+					this.moveCellByCtrlArrowKey(Direction.Down, e.shiftKey);
 					return false;
 			}
 		}
 
-		switch (e.keyCode) {
-			// Ctrl + End
-			case 35:
-				this.moveCellByArrowKey(this.Direction.End);
+		switch (e.key) {
+			case "End":
+				e.preventDefault();
+				this.moveCellByArrowKey(Direction.End);
 				return false;
-			// Ctrl + Home
-			case 36:
-				this.moveCellByArrowKey(this.Direction.Home);
+			case "Home":
+				e.preventDefault();
+				this.moveCellByArrowKey(Direction.Home);
 				return false;
-			// Left
-			case 37:
-				this.moveCellByArrowKey(this.Direction.Left, e.shiftKey);
+			case "ArrowLeft":
+				e.preventDefault();
+				this.moveCellByArrowKey(Direction.Left, e.shiftKey);
 				return false;
-			// Right
-			case 39:
-				this.moveCellByArrowKey(this.Direction.Right, e.shiftKey);
+			case "ArrowRight":
+				e.preventDefault();
+				this.moveCellByArrowKey(Direction.Right, e.shiftKey);
 				return false;
-			// Up
-			case 38:
-				this.moveCellByArrowKey(this.Direction.Up, e.shiftKey);
+			case "ArrowUp":
+				e.preventDefault();
+				this.moveCellByArrowKey(Direction.Up, e.shiftKey);
 				return false;
-			// Down
-			case 40:
-				this.moveCellByArrowKey(this.Direction.Down, e.shiftKey);
+			case "ArrowDown":
+				e.preventDefault();
+				this.moveCellByArrowKey(Direction.Down, e.shiftKey);
 				return false;
 		}
 
 	}
 
+	onFocusHolderKeypress(e){
+		e.preventDefault();
+		this.beginEdit(e.key);
+		this.onEditorKeypress(e);
+		return false;
+	}
+
+	onSearchDialogKeydown(e){
+
+		if(e.key == "Enter"){
+			e.preventDefault();
+			this.doSearch(Direction.Down);
+		}
+
+		if(e.key == "F3"){
+			e.preventDefault();
+			if(e.shiftKey){
+				this.doSearch(Direction.Up);
+			}else{
+				this.doSearch(Direction.Down);
+			}
+		}
+
+		if(e.key == "Escape"){
+			e.preventDefault();
+			this.closeSearchDialog();
+			this.setFocus();
+		}
+	}
+
 	onCellDblClick(e){
-		this.currentSelectionMode = this.SelectionMode.ContentSelectable;
-		this.markCurrentCellAsSelectable();
+		this.beginEdit();
 	}
 
 	onCellMouseUp(e) {
@@ -1351,43 +1661,42 @@ class GridTable {
 
 	onCellMouseDown(e) {
 
+		e.stopPropagation();
+
 		this.setFocus();
 
-		const cell = $(e.target);
+		this.mouseButton = e.button;
 
-		if(cell.hasClass("selectable")){
-			e.stopPropagation();
-			return true;
-		}
+		const cell = e.target;
 
-		this.clearSelectable();
+		e.preventDefault();
 
 		this.isDragging = true;
 		this.bypassHighlightByScroll = false;
-		this.currentSelectionMode = this.SelectionMode.Cell
+		this.currentSelectionMode = SelectionMode.Cell
 
 		if(e.shiftKey){
 			this.selectByShift(cell);
 		}else{
 			this.selectByMouseDown(cell);
 		}
-
-		return false;
 	}
 
 	onCellMouseOver(e) {
 
 		if (!this.isDragging) return;
 
-		const cell = $(e.target);
+		if(this.mouseButton != 0) return;
+
+		const cell = e.target;
 
 		this.clearSelection();
 
 		this.last = this.toCellNode(cell);
 
 		if(this.current.Cell.equals(this.last.Cell)){
-			this.rowHeaderCells[cell.parent().index()].addClass("row-highlight");
-			this.columnHeaderCells[cell.index() - 1].addClass("row-highlight");
+			this.rowHeaderCellsVirtual[this.indexOf(cell.parentNode)].classList.add("row-highlight");
+			this.columnHeaderCells[this.indexOf(cell) - 1].classList.add("row-highlight");
 			return;
 		}
 
@@ -1398,62 +1707,311 @@ class GridTable {
 	}
 
 	onRowHeaderCellClick(e){
+		if(this.resizingCell){
+			this.resizingCell = null;
+			return;
+		}
+
 		this.selectRow(e.target);
 	}
 
 	onColumnHeaderCellClick(e){
+		if(this.resizingCell){
+			this.resizingCell = null;
+			return;
+		}
+
 		if(typeof window.getSelection != "undefined" && window.getSelection().toString()){
 			return;
 		}
+
 		this.selectColumn(e.target);
 	}
 
-	onColumnHeaderCellDblClick(e){
+	onSortLinkClick(e){
 		e.stopPropagation();
 		this.selectColumn(e.target.parentNode);
-		this.sort($(e.target).parent().index() - 1);
+		const index = this.indexOf(e.target.parentNode) - 1;
+		this.sort(index);
+		this.columnHeaderCells.forEach(e => e.classList.remove("sorted"))
+		e.target.parentNode.classList.add("sorted");
+	}
+
+	onFilterColumnClick(e){
+		e.preventDefault();
+		e.stopPropagation();
+
+		this.toggleDropdown(e);
+	}
+
+	onDropdownClose(index, values){
+
+		if(this.dropdown.filtered){
+			if(this.filtered){
+				this.undoFilter();
+			}
+			this.filter(index, values);
+		}else if(this.filtered){
+			this.clearFilter();
+		}
+	}
+
+	onDropdownClear(){
+		this.clearFilter();
 	}
 
 	// ---------------------------------
 
-	filter(columnIndex, value){
-		if(columnIndex == 0){
+	toggleDropdown(e){
+		const idx = this.indexOf(e.target.parentNode) - 1;
+		const rect = {
+			X:(e.target.parentNode.offsetLeft - this.viewport.scrollLeft) - 3,
+			Y:e.target.parentNode.offsetTop + this.headerHeight + 1,
+			width: parseInt(e.target.parentNode.style.width.replace("px",""))
+		};
+
+		this.dropdown.open(idx, this.columnValues[idx], rect);
+	}
+
+	beginEdit(value){
+
+		if(!this.current) return;
+
+		this.isEditing = true;
+		this.prepareEditor(value);
+
+		if(this.readOnly || this.readOnlyColumns.has(this.current.Cell.ColumnIndex)){
+			this.editor.setAttribute("readOnly", "true");
+		}else{
+			this.editor.removeAttribute("readOnly");
+			this.history.begin(this.current, this.current.Node.textContent, this.sizeBase.heights[this.current.Cell.RowIndex]);
+		}
+
+		this.editor.focus();
+	}
+
+	prepareEditor(value){
+
+		const scrollLeft = this.viewport.scrollLeft;
+		const positionLeft = (this.current.Node.getBoundingClientRect().left - this.viewport.getBoundingClientRect().left) + scrollLeft;
+		const position = { left:positionLeft, top:this.childPositions[this.current.Cell.RowIndex] };
+
+		this.inputHolder.style.position = "absolute";
+		this.inputHolder.style.top = position.top + this.headerHeight + "px";
+		this.inputHolder.style.left = position.left + "px";
+
+		this.editor.style.width = Util.css(this.current.Node, "width") + "px";
+		this.editor.style.height = Util.css(this.current.Node, "height") + "px";
+
+		this.editor.value = "";
+		if(value){
+			this.editor.value = value;
+		}else{
+			this.editor.value = this.current.Node.textContent;
+		}
+	}
+
+	endEdit(){
+		this.isEditing = false;
+		this.current.Node.textContent = this.editor.value;
+		this.history.end(this.editor.value, this.sizeBase.heights[this.current.Cell.RowIndex]);
+		this.initEditor();
+		this.recalculateViewport();
+		this.setFocus();
+	}
+
+	endUndoRedo(memento){
+		this.sizeBase.heights[memento.CellNode.Cell.RowIndex] = memento.height;
+		this.recalculateViewport();
+	}
+
+	initEditor(){
+		this.editor.style.width = "0px";
+		this.editor.style.height = "0px";
+		this.inputHolder.style.position = "fixed";
+		this.inputHolder.style.top = "-100px";
+		this.inputHolder.style.left = "-100px";
+	}
+
+	undoEdit(){
+		if(!this.history.canUndo()) return;
+
+		const memento = this.history.undo();
+		this.endUndoRedo(memento);
+		this.selectByMouseDown(memento.CellNode.Node)
+	}
+
+	redoEdit(){
+		if(!this.history.canRedo()) return;
+
+		const memento = this.history.redo();
+		this.endUndoRedo(memento);
+		this.selectByMouseDown(memento.CellNode.Node)
+	}
+
+	calculateEditorSize(value){
+
+		const data = value.split("\n");
+		const maxLengthValue = data.reduce((a,b) => Util.compareLength(a,b));
+		let width = Util.getStringWidth(maxLengthValue, false, this.calculationBaseStyles) - 28;
+
+		if(width <= Util.css(this.current.Node, "width")){
+			width = Util.css(this.current.Node, "width");
+		}
+
+		let height = Util.measureHeight(this.calculationBaseStyles, value);
+		if(height > this.sizeBase.heights[this.current.Cell.RowIndex]){
+			this.sizeBase.heights[this.current.Cell.RowIndex] = height;
+		}else{
+			height = this.getChildHeight(this.current.Cell.RowIndex)
+		}
+
+		return {width, height}
+	}
+
+	recalculateViewport(){
+		this.prepareVirtualScroll(this.viewport.scrollTop, this.viewport.scrollLeft, true)
+		this.container.style.height = this.totalContentHeight + "px";
+		this.alterViewportOffset();
+	}
+
+	doSearch(direction){
+
+		const currentRowIndex = this.current == null ? 0 : this.current.Cell.RowIndex;
+
+		const value = this.dialog.childNodes[0].value;
+
+		const found = this.searchUtil.search(this.rows, value, direction, currentRowIndex);
+
+		this.searchResultArea.textContent = this.searchUtil.ResultText;
+
+		if(!found){
 			return;
 		}
 
-		if(this.filtered){
-			return;
+		this.isSearching = true;
+
+		const target = 	{
+			Node: null,
+			Cell: new Cell(this.searchUtil.CurrentResult.RowIndex, this.searchUtil.CurrentResult.ColumnIndex)
+		};
+
+
+		if(this.scrollRequired(target) == false){
+			const rowIndex = this.searchUtil.CurrentResult.RowIndex - this.startNode;
+			const columnIndex = this.searchUtil.CurrentResult.ColumnIndex + 1;
+			this.selectByMouseDown(this.visibleNodes[rowIndex].childNodes[columnIndex]);
 		}
+
+		this.isSearching = false;
+
+	}
+
+	closeSearchDialog(){
+		this.table.querySelectorAll(".found").forEach(el => el.classList.remove("found"));
+		this.dialog.classList.remove("open");
+	}
+
+	openSearchDialog(){
+		this.dialog.classList.add("open");
+	}
+
+	filter(columnIndex, value){
+		//if(columnIndex == 0) return;
+
+		if(this.filtered) return;
 
 		this.filtered = true;
-		this._rows = this.rows;
-		this.rows = [];
+		this._rows = this.filteredIndex;
+		this.filteredIndex = [];
 
-		this._rows.forEach((row) => {
+		if(Array.isArray(value)){
+			this._filterByValues(columnIndex, value);
+		}else{
+			this._filterByValue(columnIndex, value);
+		}
+
+		this.resetViewport();
+	}
+
+	_filterByValue(columnIndex, value){
+		this.rows.forEach((row, rowIndex) => {
 
 			row.forEach((item, colindex) => {
 
 				if(colindex == columnIndex && item == value){
-					this.rows.push(row);
+					this.filteredIndex.push(rowIndex);
 					return false;
 				}
 
 			});
 
 		});
+	}
+
+	_filterByValues(columnIndex, values){
+
+		this.rows.forEach((row, rowIndex) => {
+
+			row.forEach((item, colindex) => {
+
+				if(colindex == columnIndex && values.includes(item)){
+					this.filteredIndex.push(rowIndex);
+					return false;
+				}
+
+			});
+
+		});
+	}
+
+	clearFilter(){
+		if(!this.filtered) return;
+
+		this.filtered = false;
+		this.filteredIndex = this._rows;
+		this._rows = [];
 
 		this.resetViewport();
 	}
 
-	clearFilter(){
-		if(!this.filtered){
-			return;
+	undoFilter(){
+		this.filtered = false;
+		this.filteredIndex = this._rows;
+		this._rows = [];
+	}
+
+	copyToClipboard(e){
+
+		e.preventDefault();
+
+		const escapeNewLine = (value) => {
+
+			const stringValue = Util.toStringNullSafe(value);
+
+			if(stringValue.includes("\n")){
+				return '"' + stringValue + '"';
+			}
+
+			return stringValue;
 		}
 
-		this.filtered = false;
-		this.rows = this._rows;
-		this._rows = null;
-		this.resetViewport();
+		const dataArray = [];
+
+		if(this.currentSelectionMode == SelectionMode.All){
+			dataArray.push(this.header.map(item => escapeNewLine(item)).join("\t"));
+		}
+
+		for(let row = this.selection.Start.RowIndex; row <= this.selection.End.RowIndex; row++){
+			dataArray.push(
+				this.rows[this.filteredIndex[row]].slice(this.selection.Start.ColumnIndex, this.selection.End.ColumnIndex + 1)
+								.map(item => escapeNewLine(item)).join("\t")
+			);
+		}
+
+		const clipboardData = e.clipboardData || window.clipboardData || e.originalEvent.clipboardData;
+
+		clipboardData.setData("text/plain" , dataArray.join("\n"));
 	}
 
 	export(options){
@@ -1477,9 +2035,9 @@ class GridTable {
 
 		let content;
 		if(includeHeader){
-			content = [this.header].concat(this.rows).map(row => row.map(cell => escapeCsv(cell)).join(delimitter)).join("\n");
+			content = [this.header].concat(this.rows).map(row => row.map(cell => escapeCsv(Util.toStringNullSafe(cell))).join(delimitter)).join("\n");
 		}else{
-			content = this.rows.map(row => row.map(cell => escapeCsv(cell)).join(delimitter)).join("\n");
+			content = this.rows.map(row => row.map(cell => escapeCsv(Util.toStringNullSafe(cell))).join(delimitter)).join("\n");
 		}
 
 		let blob;
@@ -1492,61 +2050,44 @@ class GridTable {
 		const link = document.createElement('a');
 		link.href = (window.URL ? URL : webkitURL).createObjectURL(blob);
 		link.download = fileName + extension;
-		this.rootElement.append(link);
+		this.viewport.append(link);
 		link.click();
 		link.remove();
 	}
 
 	sort(columnIndex){
 
-		if(!this.sortMap[columnIndex]){
-			this.sortMap[columnIndex] = "asc";
-		}
+		this.sorted = true;
 
-		const ascending = this.sortMap[columnIndex];
-
-		if(ascending === "asc"){
-			this.rows.sort((a,b) => Util.toStringNullSafe(a[columnIndex]).localeCompare(Util.toStringNullSafe(b[columnIndex])));
-			this.sortMap[columnIndex] = "desc";
+		if(this.sortInfo.order == 0){
+			this.columnHeaderCells[this.sortInfo.columnIndex].classList.remove("sorted-asc");
 		}else{
-			this.rows.sort((a,b) => Util.toStringNullSafe(b[columnIndex]).localeCompare(Util.toStringNullSafe(a[columnIndex])));
-			this.sortMap[columnIndex] = "asc";
+			this.columnHeaderCells[this.sortInfo.columnIndex].classList.remove("sorted-desc");
 		}
 
-		const getRowDataAt = (index) => {
-			return [index + 1].concat(this.rows[index]);
+		const order = this.sortInfo.order == 0 ? 1 : 0;
+
+		if(order === 0){
+			this.filteredIndex.sort((a,b) => Util.toStringNullSafe(this.rows[a][columnIndex]).localeCompare(Util.toStringNullSafe(this.rows[b][columnIndex])));
+		}else{
+			this.filteredIndex.sort((a,b) => Util.toStringNullSafe(this.rows[b][columnIndex]).localeCompare(Util.toStringNullSafe(this.rows[a][columnIndex])));
 		}
 
-		const addRow = (index) => {
-			const newItem = this.createRow(index);
-			this.visibleNodes.push(newItem);
-			this.viewport.append(newItem);
+		this.sortInfo.order = order;
+		this.sortInfo.columnIndex = columnIndex;
+		if(this.sortInfo.order == 0){
+			this.columnHeaderCells[this.sortInfo.columnIndex].classList.add("sorted-asc");
+		}else{
+			this.columnHeaderCells[this.sortInfo.columnIndex].classList.add("sorted-desc");
 		}
 
-		const changeRowValue = (rowArray, arrayIndex) => {
-
-			if(arrayIndex > this.visibleNodes.length - 1){
-				addRow(arrayIndex);
-			}
-
-			const rowIndex = arrayIndex + this.startNode;
-
-			rowArray.forEach((value, index) => {
-
-				const node = this.visibleNodes[arrayIndex][0].childNodes[index];
-				node.innerHTML = value;
-
-			});
-		}
-
-		this.sizeBase = Util.getSizeBase(this.header, this.rows, this.rootElement.css("font"));
-		this.prepareVirtualScroll(this.rootElement.scrollTop(), this.rootElement.scrollLeft(), true);
-		this.alterTransform();
+		const newHeights = this.filteredIndex.map( i => this.sizeBase.heights[i]);
+		this.sizeBase.heights = newHeights;
+		this.prepareVirtualScroll(this.viewport.scrollTop, this.viewport.scrollLeft, true);
+		this.alterViewportOffset();
 		this.updateVirtualSelection();
-		new Array(this.visibleNodesCount)
-			.fill(null)
-			.map((_, index) => getRowDataAt(index + this.startNode))
-			.forEach((row, rowIndex) => changeRowValue(row, rowIndex));
+		this.alterContent(true);
+
 	}
 
 	destroy(){
@@ -1572,7 +2113,176 @@ class Selection{
 	}
 }
 
+class SearchUtil{
+
+	constructor(){
+		this._init();
+	}
+
+	_init(){
+		this.Results = [];
+		this.CurrentResult = {};
+		this.SearchedValue = null;
+		this.ResultText = "0/0";
+	}
+
+	search(rows, value, direction, currentRowIndex){
+
+		if(value == null || value == ""){
+			this._init();
+			return false;
+		}
+
+		if(this._canContinue(value)){
+			return this.continueSearch(direction);
+		}
+
+		this.CurrentResult = {};
+		this.Results = [];
+		this.SearchedValue = value;
+		this.ResultText = "0/0";
+
+		return this.startSearch(rows, value, currentRowIndex);
+	}
+
+	startSearch(rows, value, currentRowIndex){
+
+		let exp;
+
+		try{
+			exp = new RegExp(value, 'i');
+		}catch(e){
+			return false;
+		}
+
+		rows.forEach( (row, rowIndex) => {
+
+			row.forEach( (col, colIndex) => {
+
+				if(exp.test(col)){
+					const result = {Index: this.Results.length, RowIndex: rowIndex, ColumnIndex: colIndex};
+					this.Results.push(result);
+				}
+
+			})
+
+		})
+
+		if(this.Results.length <= 0){
+			return false;
+		}
+
+		const closestIndex = Util.findClosest(currentRowIndex, this.Results, this.Results.length -1, "RowIndex");
+
+		this.CurrentResult = this.Results[closestIndex];
+
+		this.ResultText = (closestIndex + 1) + "/" + this.Results.length;
+
+		return true;
+	}
+
+	_canContinue(value){
+		return this.SearchedValue == value && this.Results.length > 0;
+	}
+
+	continueSearch(direction){
+
+		const nextIndex = direction == Direction.Down ? this.CurrentResult.Index + 1 : this.CurrentResult.Index - 1;
+
+		if(direction == Direction.Down && this.Results.length == nextIndex){
+			return false;
+		}
+
+		if(direction == Direction.Up && nextIndex == -1){
+			return false;
+		}
+
+		this.CurrentResult = this.Results[nextIndex];
+
+		this.ResultText = (nextIndex + 1) + "/" + this.Results.length;
+
+		return true;
+
+	}
+
+}
+
+class EditHistory{
+
+	constructor(rows){
+		this.rows = rows;
+		this._undoStack = [];
+		this._redoStack = [];
+	}
+
+
+	begin(cellNode, value, height){
+		this.edition = {undo:{CellNode:cellNode, value:value, height: height}};
+	}
+
+	end(value, height){
+		if(this.edition.value == value){
+			this.edition = null;
+			return;
+		}
+
+		this._redoStack = [];
+		this.edition.redo = {CellNode:this.edition.undo.CellNode, value:value, height: height}
+		this._undoStack.push(this.edition);
+		this.rows[this.edition.undo.CellNode.Cell.RowIndex][this.edition.undo.CellNode.Cell.ColumnIndex] = value;
+	}
+
+	canUndo(){
+		return this._undoStack.length > 0;
+	}
+
+	undo(){
+		const stack = this._undoStack.pop();
+		this._redoStack.push(stack);
+		const undo = stack.undo;
+		this.rows[undo.CellNode.Cell.RowIndex][undo.CellNode.Cell.ColumnIndex] = undo.value;
+		undo.CellNode.Node.textContent = undo.value;
+		return undo;
+	}
+
+	canRedo(){
+		return this._redoStack.length > 0;
+	}
+
+	redo(){
+		const stack = this._redoStack.pop();
+		this._undoStack.push(stack);
+		const redo = stack.redo;
+		this.rows[redo.CellNode.Cell.RowIndex][redo.CellNode.Cell.ColumnIndex] = redo.value;
+		redo.CellNode.Node.textContent = redo.value;
+		return redo;
+	}
+
+	clear(){
+		this._undoStack = [];
+		this._redoStack = [];
+	}
+
+}
+
 class Util{
+
+	static css(element, className){
+
+		let style;
+		if(element.style[className]){
+			style = element.style[className];
+		}else{
+			style = window.getComputedStyle(element)[className];
+		}
+
+		if(className.toUpperCase() == "WIDTH" || className.toUpperCase() == "HEIGHT"){
+			return parseInt(style.replace("px",""));
+		}else{
+			return style;
+		}
+
+	}
 
 	static toStringNullSafe(value){
 
@@ -1582,6 +2292,40 @@ class Util{
 
 		return value.toString();
 
+	}
+
+	static getClipboardText(e){
+		const clipboardData = e.clipboardData || window.clipboardData || e.originalEvent.clipboardData;
+		return clipboardData.getData('Text');
+	}
+
+	static findClosest(target, items, itemCount, key){
+		let startRange = 0;
+		let endRange = itemCount > 0 ? itemCount - 1 : 0;
+
+		while (endRange !== startRange) {
+
+			const middle = Math.floor((endRange - startRange) / 2 + startRange);
+
+			const value = key == null ? items[middle] : items[middle][key];
+			const nextValue = key == null ? items[middle + 1] : items[middle + 1][key];
+
+			if (value <= target && nextValue > target) {
+				return middle;
+			}
+
+			if (middle === startRange) {
+				return endRange;
+			}
+
+			if (value <= target) {
+				startRange = middle;
+			}else{
+				endRange = middle;
+			}
+		}
+
+		return itemCount;
 	}
 
 	static getByteLength(value){
@@ -1612,6 +2356,10 @@ class Util{
 		return result
 	}
 
+	static uniq(array) {
+		return Array.from(new Set(array));
+	}
+
 	static transpose(array) {
 		return Object.keys(array[0]).map(key => {
 			return array.map(item => {
@@ -1621,7 +2369,7 @@ class Util{
 	}
 
 	static reduceString(array){
-		return this.transpose(array).map(item => item.reduce(this.compareLength.bind(this)));
+		return array.reduce(this.compareLength.bind(this));
 	}
 
 	static compareLength(a, b){
@@ -1631,37 +2379,391 @@ class Util{
 		return this.getByteLength(left) > this.getByteLength(right) ? left : right;
 	}
 
-	static getStringWidth(text, padding, font){
+	static getStringWidth(text, addPadding, styles){
 		const canvas = this.getStringWidth.canvas || (this.getStringWidth.canvas = document.createElement("canvas"));
 		const context = canvas.getContext("2d");
-		context.font = font;
+		context.font = styles.font;
 		const metrics = context.measureText(text);
 
-		if(padding){
-			return metrics.width + 32;
+		if(addPadding){
+			return parseInt(metrics.width + 32 + styles.padding);
 		}else{
-			return metrics.width + 20;
+			return parseInt(metrics.width + 20);
 		}
 	}
 
-	static reduceRowHeights(a, b){
-		const len = this.toStringNullSafe(b).split("\n").length;
-		return len > a ? len : a;
+	static measureHeight(styles, text){
+		const array = this.toStringNullSafe(text).split("\n");
+		return (styles.lineHeight * array.length) + styles.borderWidth;
 	}
 
-	static getSizeBase(header, rows, font){
+	static reduceRowHeights(a, b){
+		const comparingHeight = this.measureHeight(this.styles, b);
+		return comparingHeight > a ? comparingHeight : a;
+	}
+
+	static getSizeBase(header, rows, styles){
+
+		this.styles = styles;
 
 		const heightBases = rows.map(item => {
-			return item.reduce(this.reduceRowHeights.bind(this), 1);
+			return item.reduce(this.reduceRowHeights.bind(this), this.styles.baseHeight);
 		});
-		const _numberColumnWidth = this.getStringWidth(rows.length, false, font);
-		const _maxLengthValues = this.reduceString([header].concat(rows));
+
+		const _numberColumnWidth = this.getStringWidth(rows.length, false, this.styles);
+		const baseData = this.transpose(rows);
+		const allData = header.map((e,i) => [e].concat(baseData[i]));
+		const _maxLengthValues = allData.map(item => item.reduce(this.compareLength.bind(this)));
 
 		return {
-			widths: [_numberColumnWidth].concat(_maxLengthValues.map(item => this.getStringWidth(item, true, font))),
-			heights: heightBases
+			widths: [_numberColumnWidth].concat(_maxLengthValues.map(item => this.getStringWidth(item, true, this.styles))),
+			heights: heightBases,
+			baseData: baseData
 		};
 	}
+
 }
 
-export { GridTable }
+class Dropdown{
+
+	constructor(parent, options){
+		this.container = document.createElement("div");
+		this.container.classList.add("filter-dropdown");
+		this.container.style.display = "none";
+		this.container.setAttribute("tabindex", "0");
+		this.container.addEventListener("blur", this.onBlur.bind(this));
+		this.filterArea = document.createElement("div");
+		this.filterArea.classList.add("filter-dropdown-area");
+		this.filterAreaStyles = {
+			width: this.filterArea.style.width,
+			height: this.filterArea.style.height
+		}
+
+		const observer = new MutationObserver(this.onResize.bind(this));
+		observer.observe(this.filterArea, {
+			attriblutes: true,
+			attributeFilter: ["style"]
+		});
+
+		const searchArea = document.createElement("div");
+		searchArea.classList.add("search-text-area");
+		const searchTextContainer = document.createElement("span");
+		this.searchText = document.createElement("input");
+		this.searchText.type = "text";
+		this.searchText.classList.add("search-text");
+		this.searchText.addEventListener("keyup", this.filter.bind(this));
+		const clearBtn = document.createElement("div");
+		clearBtn.classList.add("clear-text");
+		clearBtn.innerHTML = "&#10006;";
+		searchTextContainer.append(this.searchText, clearBtn);
+		searchArea.appendChild(searchTextContainer);
+
+		this.dropdownArea = document.createElement("div");
+		this.dropdownArea.classList.add("dropdown");
+		this.dropdownArea.addEventListener("scroll", this.onScroll.bind(this));
+
+		this.options = document.createElement("ul");
+		this.options.classList.add("options");
+
+		this.viewport = document.createElement("div");
+		this.viewport.classList.add("dropdown-viewport")
+		this.viewport.appendChild(this.options);
+		this.dropdownArea.appendChild(this.viewport);
+
+		const buttonArea = document.createElement("div");
+		buttonArea.classList.add("btn-area");
+		const buttons = document.createElement("div");
+		buttons.classList.add("btns");
+		const okBtn = document.createElement("button");
+		okBtn.classList.add("btn","btn-sub");
+		okBtn.textContent = "OK";
+		okBtn.addEventListener("click", this._onOKButtonClick.bind(this));
+		const clearFilterBtn = document.createElement("button");
+		clearFilterBtn.classList.add("btn","btn-sub");
+		clearFilterBtn.textContent = "Clear";
+		clearFilterBtn.addEventListener("click", this.clear.bind(this));
+		const cancelBtn = document.createElement("button");
+		cancelBtn.classList.add("btn","btn-sub");
+		cancelBtn.addEventListener("click", this.close.bind(this));
+		cancelBtn.textContent = "Cancel";
+
+		buttons.append(okBtn, clearFilterBtn, cancelBtn);
+		buttonArea.appendChild(buttons);
+
+		this.filterArea.append(searchArea, this.dropdownArea, buttonArea);
+		this.container.append(this.filterArea);
+		parent.appendChild(this.container)
+
+		this.animationFrame = null;
+
+		this._init();
+
+		this.afterDropdownClose = options.afterDropdownClose;
+		this.clearFilter = options.clearFilter;
+		this.calculationBaseStyles = {
+			rowHeight: 20,
+			font: "12px Verdana,Arial,sans-serif",
+			width: 200,
+			height:150
+		}
+	}
+
+	_init(){
+		this.filtered = false;
+		this.IsOpened = false;
+		this.visibleIndex = [];
+		this.filteredIndex = [];
+		this._rawIndex = [];
+		this.checkedIndex = new Set();
+		this.filteredValue = null;
+		this.prev = {
+			filteredIndex: null,
+			checkedIndex: null,
+			filteredValue: null
+		}
+		this.itemCount = 0;
+		this.currentColumnIndex = -1;
+		this.values = null;
+		this.selectedValues = [];
+		this.visibleNodes = null;
+		this.nodeOffsetY = 0;
+	}
+
+	open(index, values, rect){
+
+		this.IsOpened = true;
+		this.currentColumnIndex = index;
+		this.values = Array.from(values);
+		this.values.unshift("Select All");
+		this.itemCount = values.length;
+		this.selectedValues = [];
+
+		if(this.filtered && this.currentColumnIndex == this.filteredColumn){
+			this.filteredIndex = this.prev.filteredIndex;
+			this._rawIndex = values.map((e,i) => i);
+			this.checkedIndex = this.prev.checkedIndex;
+			this.filteredValue = this.prev.filteredValue;
+			this.searchText.value = this.filteredValue;
+		}else{
+			this.filterArea.style.width = this.filterAreaStyles.width;
+			this.filterArea.style.height = this.filterAreaStyles.height;
+			this.filteredIndex = values.map((e,i) => i);
+			this._rawIndex = this.filteredIndex;
+			this.checkedIndex = new Set();
+			this.filteredValue = null;
+			this.searchText.value = this.filteredValue;
+		}
+
+		this._createOptions();
+
+		const marginLeft = rect.width - this.calculationBaseStyles.width;
+		this.container.style.top = rect.Y + "px";
+		this.container.style.left = (rect.X + marginLeft) + "px";
+		this.container.style.display = "block";
+		this.dropdownArea.scrollTop = 0;
+		this.dropdownArea.scrollLeft = 0;
+
+		this.container.focus();
+	}
+
+	_createOptions(checkAll){
+
+		this._prepareVirtualScroll(0,true);
+
+		this.viewport.style.height = this.totalContentHeight + "px";
+		this.viewport.style.width = Util.getStringWidth(Util.reduceString(this.values), true, this.calculationBaseStyles) + "px";
+
+		this.options.innerHTML = "";
+		this.visibleNodes = [];
+
+		const options = document.createDocumentFragment();
+		this.visibleIndex.forEach(visibleIndex => {
+			const li = document.createElement("li");
+			const label = document.createElement("label");
+			label.classList.add("option");
+			const chk = document.createElement("input");
+			if(visibleIndex == 0){
+				chk.classList.add("select-all");
+			}
+			chk.type = "checkbox";
+			if(checkAll){
+				chk.checked = true;
+			}
+			chk.addEventListener("change", this.toggleCheck.bind(this));
+			if(this.filteredColumn == this.currentColumnIndex && this.checkedIndex.has(visibleIndex)){
+				chk.checked = true;
+			}
+			const sp = document.createElement("span");
+			sp.textContent = this.values[visibleIndex];
+			label.append(chk, sp);
+			li.append(label);
+			options.append(li);
+			this.visibleNodes.push(label);
+
+		})
+
+		this.options.append(options);
+	}
+
+	close(){
+		this.IsOpened = false;
+		this.container.style.display = "none";
+	}
+
+	filter(e){
+
+		if(e.target.value == null || e.target.value == ""){
+			this.clearTextFilter();
+			return;
+		}
+
+		this.filteredValue = e.target.value;
+		this._rawIndex = this.filteredIndex;
+		this.filteredIndex = [];
+
+		const target = Util.toStringNullSafe(e.target.value).toUpperCase();
+
+		this.values.forEach((row, rowIndex) => {
+
+			if(rowIndex == 0 || row.toUpperCase().includes(target)){
+				this.filteredIndex.push(rowIndex);
+			}
+
+		});
+
+		this._createOptions(true);
+
+		this.checkedIndex = new Set(this.filteredIndex);
+	}
+
+	clearTextFilter(){
+		this.filteredValue = null;
+		this.filteredIndex = this._rawIndex;
+		this.checkedIndex = new Set();
+		this._createOptions();
+	}
+
+	clear(){
+		this.filtered = false;
+		this.close();
+		if(this.clearFilter){
+			this.clearFilter();
+		}
+	}
+
+	toggleCheck(e){
+
+		if(e.target.classList.contains("select-all")){
+			if(e.target.checked){
+				this.options.querySelectorAll("input").forEach((e,i) => {if(i > 0) e.checked = true});
+				this.checkedIndex = new Set(this.filteredIndex);
+			}else{
+				this.options.querySelectorAll("input").forEach((e,i) => {if(i > 0) e.checked = false});
+				this.checkedIndex = new Set();
+			}
+		}else{
+			if(e.target.checked){
+				this.checkedIndex.add(this.values.indexOf(e.target.nextElementSibling.textContent));
+			}else{
+				this.checkedIndex.delete(this.values.indexOf(e.target.nextElementSibling.textContent));
+			}
+		}
+
+
+	}
+
+	_onOKButtonClick(e){
+
+		const isFiltered = () => {
+
+			if(this.checkedIndex.size == this.itemCount) return false;
+
+			if(this.checkedIndex.size > 0) return true;
+
+			return false;
+		}
+
+		this.filtered = isFiltered();
+
+		if(this.filtered){
+			this.filteredColumn = this.currentColumnIndex;
+			this.SelectedValues = Array.from(this.checkedIndex).map(e => this.values[e]);
+
+			this.prev.filteredIndex = this.filteredIndex;
+			this.prev.checkedIndex = this.checkedIndex;
+			this.prev.filteredValue = this.filteredValue;
+		}
+
+		if(this.afterDropdownClose){
+			this.afterDropdownClose(this.currentColumnIndex, this.SelectedValues);
+		}
+
+		this.close();
+	}
+
+
+	onScroll(e){
+		if (this.animationFrame) {
+			window.cancelAnimationFrame(this.animationFrame);
+		}
+
+		this.animationFrame = window.requestAnimationFrame(() => this.doVirtualScroll(e));
+	}
+
+	_prepareVirtualScroll(scrollTop, reset){
+
+		const nodePadding = 0;
+
+		if(reset){
+			this.totalContentHeight = this.itemCount * this.calculationBaseStyles.rowHeight;
+		}
+
+		this.startNode = Math.floor(scrollTop / this.calculationBaseStyles.rowHeight) - nodePadding;
+		this.startNode = Math.max(0, this.startNode);
+
+		let visibleNodesCount = Math.ceil(this.calculationBaseStyles.height / this.calculationBaseStyles.rowHeight) + 2 * nodePadding;
+		visibleNodesCount = Math.min(this.itemCount - this.startNode, visibleNodesCount);
+
+		this.nodeOffsetY = this.startNode * this.calculationBaseStyles.rowHeight;
+
+		this.visibleIndex = this.filteredIndex.slice(this.startNode, this.startNode + visibleNodesCount);
+
+	}
+
+
+	doVirtualScroll(e){
+
+		this._prepareVirtualScroll(e.target.scrollTop, false);
+
+		this.visibleIndex.forEach((visibleIndex, rowIndex) => {
+
+			if(visibleIndex == 0){
+				this.visibleNodes[rowIndex].childNodes[0].classList.add("select-all");
+			}else{
+				this.visibleNodes[rowIndex].childNodes[0].classList.remove("select-all");
+			}
+
+			this.visibleNodes[rowIndex].childNodes[0].checked = this.checkedIndex.has(visibleIndex)
+
+			this.visibleNodes[rowIndex].childNodes[1].textContent = this.values[visibleIndex]
+		});
+
+		this.options.style.top = this.nodeOffsetY + "px";
+
+	}
+
+	onBlur(e){
+
+		if(!this.container.contains(e.relatedTarget)){
+			this.close();
+		}
+	}
+
+	onResize(e){
+		this.calculationBaseStyles.height = parseInt(this.filterArea.style.height.replace("px", ""));
+		this._createOptions();
+	}
+
+}
+
+export default GridTable;

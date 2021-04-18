@@ -24,7 +24,7 @@ export default {
             console.log("ax")
 
             return await axios(options)
-                .then(res => {console.log("res" + res);return res;})
+                .then(res => {console.log(res);return res;})
                 .catch(e => {console.log(e);throw new Error(e.response.data)}
                 )
 

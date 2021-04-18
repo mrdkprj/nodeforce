@@ -46,23 +46,8 @@ class SoapClient {
 
     async query(soql){
         return await this.client.queryAsync({queryString: soql})
-            .then(results => {
-                const result = results[0].result;
-                //console.log(result)
-                //console.log(result.records)
-                /*
-                const json = {
-                    header:result.records[0],
-                    rows:txt.slice(1),
-                    soqlInfo: {
-                        soql: request.soql,
-                        tabId: request.tabId,
-                        timestamp: txt.length - 1 + " rows@" + new Date().toLocaleString('ja-JP')
-                    }
-                };*/
-                console.log(result)
-                return result;
-            })
+            .then(results => { return {done: true, result: results[0].result}})
+            .catch(results => {return {done: false, message:results.cause.root.Envelope.Body.Fault.faultstring}})
     }
 
     async queryAll(soql){

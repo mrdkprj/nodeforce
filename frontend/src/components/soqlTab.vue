@@ -1,25 +1,7 @@
 <template>
-    <div class="tab-area">
-        <button type="button" id="soqlHistoryBtn" class="btn btn-xs btn-default" @click="onHistoryButtonClick">History</button>
-        <button type="button" class="btn btn-xs btn-default export" @click="exportCsv">Export</button>
-        <ul id="soqlTabs">
-            <li class="noselect" v-for="tabId in tabIds" v-bind:key="tabId">
-                <a v-bind:href="'#soqlTab' + tabId" :tabId="tabId" @click="onTabClick">Grid{{tabId}}</a>
-                <span class="ui-icon ui-icon-close ui-closable-tab" :tabId="tabId" @click="closeTab"></span>
-            </li>
-            <li class="add-tab-li">
-                <div class="add-tab-btn icon-plus" @click="addTab"></div>
-            </li>
-        </ul>
-        <div v-for="tabId in tabIds" v-bind:key="tabId" v-bind:id="'soqlTab' + tabId" class="result-tab" :tabId="tabId">
-            <div class="result-info" :tabId="tabId">
-                <div v-bind:id="'soql' + tabId">
-                    <button name="rerunBtn" type="button" class="rerun btn btn-xs btn-default grid-btn" @click="rerun">Rerun</button>
-                </div>
-                <span v-bind:id="'soql-info' + tabId">{{timestamp}}</span>
-            </div>
-            <div v-bind:id="'soqlGrid' + tabId" class="result-grid" :tabId="tabId"></div>
-        </div>
+    <div div id="soqlTabArea" class="tab-area">
+        <button type="button" id="soqlHistoryBtn" class="btn btn-sub" @click="onHistoryButtonClick">History</button>
+        <button type="button" class="btn btn-sub export" @click="exportCsv">Export</button>
     </div>
 </template>
 
@@ -29,22 +11,13 @@ export default {
 
     data: function () {
         return {
-            tabIds: {},
-            baseTabIndex: 0,
-            currentTabId: 0,
-            sObjects: {}
+            tabComponent: new Tab(),
+            sObjects: {},
         }
     },
 
     computed: {
 
-        timestamp: function(){
-            if(this.sObjects[this.currentTabId]){
-                return this.sObjects[this.currentTabId].timestamp;
-            }else{
-                return "0 rows";
-            }
-        }
     },
 
     methods: {
@@ -53,98 +26,79 @@ export default {
             this.$emit("requestOpenHistory");
         },
 
-        onTabClick: function(e) {
-            this.currentTabId = e.target.getAttribute("tabId");
+        createTab: function(newTab){
+            const newTabId = newTab.tabIndex;
+
+            this.tabComponent.activate(newTab.tabIndex);
+
+            const parent = document.createElement("div");
+            parent.classList.add("result-tab");
+            parent.setAttribute("tabId", newTabId)
+
+            const resultDiv = document.createElement("div");
+            resultDiv.classList.add("result-info");
+            resultDiv.setAttribute("tabId", newTabId);
+
+            const soqlInfoDiv = document.createElement("div");
+            soqlInfoDiv.classList.add("soql-info-area");
+
+            const infoDiv = document.createElement("div");
+            infoDiv.id = "soqlInfo"+ newTabId;
+            infoDiv.innerText = "0 rows";
+
+            const btnArea = document.createElement("div");
+            btnArea.classList.add("rerun");
+            btnArea.classList.add("refresh-sm");
+            const btn = document.createElement("div");
+            btn.classList.add("refresh-btn-sm");
+            btnArea.appendChild(btn);
+
+            soqlInfoDiv.appendChild(infoDiv);
+            soqlInfoDiv.appendChild(btnArea);
+
+
+            resultDiv.appendChild(soqlInfoDiv)
+
+            const gridDiv = document.createElement("div");
+            gridDiv.id = "soqlGrid" + newTabId;
+            gridDiv.classList.add("result-grid")
+            gridDiv.setAttribute("tabId",newTabId)
+
+            parent.appendChild(resultDiv)
+            parent.appendChild(gridDiv)
+
+            newTab.content.appendChild(parent);
         },
 
-        //------------------------------------------------
-        // Close tab
-        //------------------------------------------------
-        closeTab: function(e) {
-
-            e.stopPropagation();
-
-            if (Object.keys(this.tabIds).length <= 1) {
-                return;
-            }
-
-            e.target.parentElement.remove();
-
-            this.$delete(this.tabIds, e.target.getAttribute("tabId"));
-
-            this.$nextTick(() => {
-
-                $("#soqlArea .tab-area").tabs("refresh");
-
-                this.setSortableAttribute();
-
-            });
-
-        },
-
-        //------------------------------------------------
-        // Create tab
-        //------------------------------------------------
-        addTab: function(e){
-            this.createTab();
-        },
-
-        createTab: function(){
-
-            this.baseTabIndex++;
-
-            this.currentTabId = this.baseTabIndex;
-
-            this.$set(this.tabIds, this.baseTabIndex, this.baseTabIndex);
-
-            this.$nextTick(() => {
-
-                $("#soqlArea .tab-area").tabs("refresh");
-
-                const newTabIndex = $("#soqlArea .tab-area ul li").length - 2;
-
-                this.setSortableAttribute();
-
-                $("#soqlArea .tab-area").tabs({ active: newTabIndex});
-
-            });
-        },
-
-        setSortableAttribute: function(){
-            if (Object.keys(this.tabIds).length > 1) {
-                $("#soqlTabs").sortable("enable");
-            } else {
-                $("#soqlTabs").sortable("disable");
-            }
+        getActiveTabElementId: function(){
+            return this.tabComponent.activeTabIndex;
         },
 
         getActiveGridElementId: function(){
-            return "#soqlGrid" + this.currentTabId;
+            return "soqlGrid" + getActiveTabElementId();
         },
 
         setQueryResult: function(result){
-            const gridSelector = "#soqlGrid" + result.soqlInfo.tabId;
-            const grid = new GridTable(document.querySelector(gridSelector), result);
-            const value = {
-                            timestamp: result.soqlInfo.timestamp,
-                            soql: result.soqlInfo.soql,
-                            grid: grid
-                        }
-            this.$set(this.sObjects, result.soqlInfo.tabId, value);
+            const gridSelector = "soqlGrid" + result.soqlInfo.tabId;
+            const grid = new GridTable(document.getElementById(gridSelector), {rows: result.rows, header:result.columns});
+            this.$set(this.sObjects, result.soqlInfo.tabId, {grid:grid, soql:result.soqlInfo.soql});
         },
 
         //------------------------------------------------
         // Rerun SOQL
         //------------------------------------------------
         rerun: function(e){
-            if (this.sObjects[this.currentTabId]) {
-                this.$emit("onExecuteRequest", this.sObjects[this.currentTabId].soql);
+            const tabId = this.getActiveTabElementId();
+            if (this.sObjects[tabId]) {
+                this.$emit("onExecuteRequest", this.sObjects[tabId].soql);
             }
         },
 
         // export
         exportCsv: function(){
-            const grid = this.sObjects[this.currentTabId].grid;
+            const tabId = this.getActiveGridElementId();
+            const grid = this.sObjects[tabId].grid;
+
             if(grid){
                 grid.export({
                     fileName: "query_result",
@@ -156,11 +110,17 @@ export default {
     },
 
     mounted(){
-        $("#soqlArea .tab-area").tabs();
-        $("#soqlTabs").sortable({items: "li:not(.add-tab-li)", delay: 150});
-        this.createTab();
+        this.tabComponent.afterAddTab(this.createTab);
+        this.tabComponent.create(document.getElementById("soqlTabArea"), "soqlTab", "Grid");
+        this.tabComponent.addTab();
     }
 }
 </script>
-<style></style>
+<style>
+    .soql-info-area{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+</style>
 

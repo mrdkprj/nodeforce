@@ -1,5 +1,5 @@
 <template>
-    <div class="message-area" :class="state">{{message}}</div>
+    <div class="message-area" :class="state"><div class="message">{{message}}</div></div>
 </template>
 
 <script>
@@ -40,6 +40,10 @@ export default {
 
 <style scoped>
     .message-area{
+        margin: 5px;
+    }
+
+    .message{
         width: 100%;
         display: none;
         color: red;

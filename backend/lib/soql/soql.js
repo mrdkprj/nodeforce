@@ -12,7 +12,7 @@ class SOQL{
             throw new Error(queryResult.message);
         }
 
-        const parsedResult = parser.parse(body, queryResult);
+        const parsedResult = parser.parse(body, queryResult.result);
 
         return {
             columns:parsedResult.columns,

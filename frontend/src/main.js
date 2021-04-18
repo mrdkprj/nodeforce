@@ -6,19 +6,13 @@ import jQuery from "jquery"
 global.jQuery = jQuery
 global.$ = jQuery
 window.$ = window.jQuery = require("jquery")
-require("./assets/js/bootstrap.js");
-require("./assets/js/jquery-ui-1.11.3.min.js");
-//require("./assets/js/ajaxUtils.js");
-import {GridTable} from "./assets/js/GridTable.js";
+import GridTable from "./assets/js/gridtable.js";
 global.GridTable = GridTable
+import Tab from "./assets/js/tab.js";
+global.Tab = Tab
 
 Vue.config.productionTip = false
-/*
-new Vue({
-  router,
-  store,
-  render: h => h(App)
-}).$mount("#app")*/
+
 new Vue({
   router,
   store,

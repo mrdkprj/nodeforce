@@ -1,8 +1,8 @@
 <template>
     <ul id="menus">
-        <li><a id="soql" href="javascript:void(0)" class="menu-item" v-bind:class="{displayed: current == 'soql'}" @click="onMenuClick">SOQL</a></li>
-        <!--<li><a id="describe" href="javascript:void(0)" class="menu-item">Describe</a></li>-->
-        <li><a id="apex" href="javascript:void(0)" class="menu-item" v-bind:class="{displayed: current == 'apex'}" @click="onMenuClick">Apex</a></li>
+        <li><a id="soql" class="menu-item" v-bind:class="{displayed: current == 'soql'}" @click="onMenuClick">SOQL</a></li>
+        <li><a id="describe" class="menu-item">Describe</a></li>
+        <li><a id="apex" class="menu-item" v-bind:class="{displayed: current == 'apex'}" @click="onMenuClick">Apex</a></li>
     </ul>
 </template>
 
@@ -47,7 +47,7 @@ export default {
         border-right: #aaa 1px solid;
     }
 
-    #menus li a {
+    .menu-item{
         height: 44px;
         line-height: 44px;
         display: block;
@@ -55,10 +55,12 @@ export default {
         transition: all 0.2s linear;
         text-decoration: none;
         color: #fff;
+        cursor: pointer;
     }
 
-    #menus li:hover > a {
+    .menu-item:hover {
         background-color: #1579c0;
+        text-decoration: none;
     }
 
     .displayed{
