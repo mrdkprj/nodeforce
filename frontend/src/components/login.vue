@@ -1,12 +1,12 @@
 <template>
     <div id="loginFormArea">
-        <div id="loginMessageArea">
+        <div id="loginMessageArea" v-show="hasError">
             <div id="loginMessage">{{message}}</div>
         </div>
 
         <div class="login-form">
-            <form>
-            	<div class="header"></div>
+            <form @submit.prevent>
+            	<div class="padding-area"></div>
                 <div class="input-area">
                     <div>
                         <div>User Name</div>
@@ -38,18 +38,30 @@ export default {
         return {
             message: "",
             username: "",
-            password: ""
+            password: "",
         }
     },
+
+    computed: {
+        hasError: function(){
+            if(this.message){
+                return true;
+            }
+
+            return false;
+        }
+    },
+
     methods: {
         login () {
+
             this.$store.dispatch(
                 "auth/create",
                 {
                     username: this.username,
                     password: this.password
                 }
-            ).then(e => {console.log("eee");console.log(e);this.message = e;})
+            ).then(e => {this.message = e;})
         }
     },
     /*
@@ -96,31 +108,34 @@ export default {
     }
 
     #loginMessageArea{
-        text-align: center;
         padding: 5px;
-        display: none;
+        display: block;
         background-color: #1d274a;
         position: fixed;
-        top: 10%;
+        top: 5%;
         left: 0;
         width: 100%;
         color: #fff;
         border-top: 1px solid #ccc;
         border-bottom: 1px solid #ccc;
         font-size: 14px;
+        /*height: 52px;*/
     }
 
     #loginMessage{
-        width: 40%;
+        width: 35%;
         margin: 0 auto;
         padding: 5px 0;
+        text-align: center;
     }
 
     .login-form{
         position: fixed;
         top: 25%;
-        width: 30%;
+        width:390px;
+        min-width:300px;
         height: 40%;
+        min-height:300px;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -131,7 +146,17 @@ export default {
         color: #e1e0e0;
     }
 
-    .header{
+    form{
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        height: 100%;
+        padding: 0 28px;
+        width:100%;
+        margin: 0;
+    }
+
+    .padding-area{
         height:10%;
     }
 
@@ -149,15 +174,15 @@ export default {
         height: 30%;
     }
 
-    input[type=text],
-    input[type=password]{
+    .login-form input[type=text],
+    .login-form input[type=password]{
         border: 1px solid #888;
         line-height: 35px;
         font-size: 14px;
         height: 35px;
         border-radius: 4px;
         text-indent: 5px;
-        width: 300px;
+        width:100%;
     }
 
     .selection{
@@ -169,18 +194,11 @@ export default {
 
     .radio{
         position:relative;
-        /*width: 50%;*/
+        width: 50%;
         border-right: 1px solid #888;
         background: #dadcdc;
         box-shadow: inset 3px 3px 3px 2px rgb(0 0 0 / 23%);
         border-radius: 4px 0px 0 4px;
-        width: 100%;
-        height: 35px;
-        vertical-align: middle;
-        text-align: center;
-        line-height: 35px;
-        color:#424141;
-        cursor:pointer;
     }
 
     .radio:last-of-type{
@@ -195,20 +213,26 @@ export default {
         position:fixed;
         top:-100px;
         left:-100px;
+    }
 
+    label{
+        width: 100%;
+        height: 35px;
+        vertical-align: middle;
+        text-align: center;
+        line-height: 35px;
+        color:#424141;
+        cursor:pointer;
     }
 
     input[type=radio]:checked + .radio{
         box-shadow: none;
-        /*background: #d9d9f5;*/
         background-color:#fff;
         color:#424141;
-    /*    background: linear-gradient( 180deg ,#d8d8dc 0%,#ffffff 100%)*/
         background: linear-gradient( 180deg , #ffffff 80%, #d9d9f5 100%)
     }
 
     .login-btn{
-        font-size:18px;
         padding: 1px 5px;
         font-size: 20px;
         line-height: 40px;
@@ -218,6 +242,7 @@ export default {
         border-color: #ccc;
         width: 200px;
         height: 40px;
+        font-size:18px;
     }
 
     .login-btn:hover{
@@ -226,16 +251,6 @@ export default {
         border: 1px solid #ccc;
         background: #1579c0;
     }
-
-    form{
-        display: flex;
-        justify-content: center;
-        flex-direction: column;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-    }
-
 
     input:active,
     input:focus{

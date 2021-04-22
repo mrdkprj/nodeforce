@@ -1,5 +1,5 @@
 /nodeforce.code-workspace
 /frontend/node_modules/
 /backend/node_modules/
+/backend/public/*
 /backend/run.bat
-/backend/public/
