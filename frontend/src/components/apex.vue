@@ -1,32 +1,36 @@
 <template>
     <div id="apexArea">
-        <div class="form-area execute-anonymous-form">
+        <div class="form-area">
             <div>
-                <textarea id="apexCode" class="code-input" spellcheck="false" cols="120" rows="5"></textarea>
+                <textarea id="apexCode" class="code-input" spellcheck="false" cols="120" rows="5" v-model="apexCode"></textarea>
             </div>
             <div>
-                <button type="button" id="executeAnonymousBtn" class="btn btn-sm btn-primary" @click="onExecuteClick">Execute Anonymous</button>
+                <button type="button" id="executeAnonymousBtn" class="btn btn-main" @click="onExecuteClick">Execute Anonymous</button>
             </div>
-            <p><message ref="message"></message></p>
+            <message ref="message"></message>
         </div>
 
         <apextab ref="tab"></apextab>
+
     </div>
+
 </template>
 
 <script>
 import message from "@/components/message.vue";
 import tab from "@/components/apexTab.vue";
 
-const DEFAULT_DATA_TYPE = "";
-const DEFAULT_CONTENT_TYPE = null;
-const POST = "post";
-
 export default {
 
     components: {
         "message" : message,
         "apextab" : tab
+    },
+
+    data: function () {
+        return {
+            apexCode: "string x = 'a'; system.debug(x);",
+        }
     },
 
     methods: {
@@ -36,37 +40,31 @@ export default {
         //------------------------------------------------
         onExecuteClick: function(e){
 
-            const code = $("#apexArea #apexCode").val();
-
-            if ($.isAjaxBusy() || !code) {
-                return false;
+            if (!this.apexCode) {
+                return;
             }
 
-            e.preventDefault();
-
-            this.executeAnonymous(code);
+            this.executeAnonymous(this.apexCode);
         },
 
         executeAnonymous: function(code){
+
             this.$refs.message.hideMessageArea();
-            this.selectedTabId = this.$refs.tab.currentTabId;
 
-            const debugOptions = {};
-            $("#debugOptions option:selected").each(function() {
-                const category = $(this).parent().attr("id");
-                const level = $(this).val();
-                debugOptions[category] = level;
-            });
-
-            const val = {code: code, debug_options: debugOptions};
-            const action = "/apex";
-            const options = $.getAjaxOptions(action, POST, val, DEFAULT_DATA_TYPE, DEFAULT_CONTENT_TYPE);
-            const callbacks = $.getAjaxCallbacks(this.afterExecuteAnonymous, this.$refs.message.displayError, null);
-            $.executeAjax(options, callbacks);
+            this.$store.dispatch(
+                "auth/request",
+                {
+                    url: "/apex",
+                    data:{
+                        code: code, tabId: this.$refs.tab.getActiveTabElementId()
+                    }
+                }
+            ).then(res => this.displayLog(res))
+            .catch(ex => this.$refs.message.displayError(ex))
         },
 
-        afterExecuteAnonymous: function(json){
-            this.$refs.tab.setLog(this.selectedTabId, json);
+        displayLog: function(json){
+            this.$refs.tab.setLog(json);
         },
 
     }

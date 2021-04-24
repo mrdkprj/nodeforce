@@ -8,11 +8,7 @@ class SOQL{
 
     static getResponse(body, queryResult){
 
-        if(queryResult.done == false){
-            throw new Error(queryResult.message);
-        }
-
-        const parsedResult = parser.parse(body, queryResult.result);
+        const parsedResult = parser.parse(body, queryResult);
 
         return {
             columns:parsedResult.columns,

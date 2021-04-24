@@ -14,7 +14,7 @@
             <message ref="message"></message>
         </div>
 
-        <soqltab ref="tab" @onExecuteRequest="executeSoql($event)" @requestOpenHistory="openHistory"></soqltab>
+        <soqltab ref="tab" @requestRerunSoql="executeSoql($event)" @requestOpenHistory="openHistory"></soqltab>
     </div>
 </template>
 
@@ -27,7 +27,6 @@ export default {
 
     data: function () {
         return {
-            selector: "#soqlArea",
             tooling: false,
             inputSoql: "select firstname,Name,Id,account.name from contact where id in ('0036F00003Vhe7y','0036F00003WqLC4')",
             sidenavOpened: false
@@ -85,6 +84,8 @@ export default {
                 return;
             }
 
+            this.$refs.message.hideMessageArea();
+
             this.$store.dispatch(
                 "auth/request",
                 {
@@ -123,7 +124,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
     #soqlArea{
         position:relative;
         top:0px;

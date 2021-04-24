@@ -6,7 +6,7 @@
         </div>
 
         <div class="login-form">
-            <form @submit.prevent>
+            <form class="form-element" @submit.prevent>
             	<div class="padding-area"></div>
                 <div class="input-area">
                     <div>
@@ -157,7 +157,7 @@ export default {
         color: #e1e0e0;
     }
 
-    form{
+    .form-element{
         display: flex;
         justify-content: center;
         flex-direction: column;

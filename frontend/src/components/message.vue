@@ -8,16 +8,15 @@ export default {
     data: function(){
         return {
             message: "",
-            displayed: false
         }
     },
 
     computed: {
         state: function(){
-            if(this.displayed){
-                return "message-displayed";
+            if(this.message == ""){
+                return "";
             }else{
-                return "message-hidden";
+                return "fault";
             }
         }
     },
@@ -26,12 +25,10 @@ export default {
 
         displayError: function(json){
             this.message = json;
-            this.displayed = true;
         },
 
         hideMessageArea: function(){
             this.message = "";
-            this.displayed = false;
         },
     }
 
@@ -52,12 +49,8 @@ export default {
         word-wrap: break-word;
     }
 
-    .message-displayed{
+    .fault .message{
         display: block;
-    }
-
-    .message-hidden{
-        display: none;
     }
 
 </style>

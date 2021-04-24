@@ -1,23 +1,7 @@
 <template>
-        <div class="tab-area">
-            <button type="button" class="btn btn-xs btn-default export" @click="exportCsv">Export</button>
-            <ul id="apexTabs">
-                <li class="noselect" v-for="tabId in tabIds" :key="tabId">
-                    <a :href="'#apexTab' + tabId" :tabId="tabId" @click="onTabClick">Grid{{tabId}}</a>
-                    <span class="ui-icon ui-icon-close ui-closable-tab" :tabId="tabId" @click="closeTab"></span>
-                </li>
-                <li class="add-tab-li">
-                    <div class="add-tab-btn icon-plus" @click="addTab"></div>
-                </li>
-            </ul>
-            <div v-for="tabId in tabIds" :key="tabId" :id="'apexTab' + tabId" class="result-tab" :tabId="tabId">
-                <div :id="'logInfo' + tabId" class="result-info" :tabId="tabId">
-                    <span>{{name}}</span>
-                    <label><input type="checkbox" class="debug-only" :disabled="!hasName" @change="debugOnly">&nbsp;&nbsp;Debug only</label>
-                </div>
-                <div :id="'apexGrid' + tabId" class="result-grid" :tabId="tabId"></div>
-            </div>
-        </div>
+    <div id="apexTabArea" class="tab-area">
+        <button type="button" class="btn btn-sub export" @click="exportCsv">Export</button>
+    </div>
 </template>
 
 <script>
@@ -29,114 +13,79 @@ export default {
 
     data: function () {
         return {
-            tabIds: {},
-            baseTabIndex: 0,
-            currentTabId: 0,
+            tabComponent: new Tab(),
             logs: {}
-        }
-    },
-
-    computed: {
-
-        name: function () {
-            if(this.hasName){
-                return this.logs[this.currentTabId].name;
-            }else{
-                return null;
-            }
-        },
-
-        hasName: function(){
-            if(this.logs[this.currentTabId]) {
-                return true;
-            }else{
-                return false;
-            }
         }
     },
 
     methods: {
 
-        onTabClick: function(e) {
-            this.currentTabId = e.target.getAttribute("tabId");
+        getActiveTabElementId: function(){
+            return this.tabComponent.activeTabIndex;
         },
 
-        //------------------------------------------------
-        // Close tab
-        //------------------------------------------------
-        closeTab: function(e) {
+        createTab: function(newTab){
 
-            e.stopPropagation();
+            const newTabId = newTab.tabIndex;
 
-            if (Object.keys(this.tabIds).length <= 1) {
-                return;
-            }
+            this.tabComponent.activate(newTab.tabIndex);
 
-            e.target.parentElement.remove();
+            const parent = document.createElement("div");
+            parent.classList.add("result-tab");
+            parent.setAttribute("tabId", newTabId)
 
-            this.$delete(this.tabIds, e.target.getAttribute("tabId"));
+            const resultDiv = document.createElement("div");
+            resultDiv.id = "logInfo" + newTabId;
+            resultDiv.classList.add("result-info");
+            resultDiv.setAttribute("tabId", newTabId);
 
-            this.$nextTick(() => {
+            const gridDiv = document.createElement("div");
+            gridDiv.id = "apexGrid" + newTabId;
+            gridDiv.classList.add("result-grid")
+            gridDiv.setAttribute("tabId",newTabId)
 
-                $("#apexArea .tab-area").tabs("refresh");
+            parent.appendChild(resultDiv)
+            parent.appendChild(gridDiv)
 
-                this.setSortableAttribute();
-
-            });
+            newTab.content.appendChild(parent);
 
         },
 
-        //------------------------------------------------
-        // Create tab
-        //------------------------------------------------
-        addTab: function(e){
-            this.createTab();
+        setLog: function(log){
+
+            const elementId = "apexGrid" + log.tabId;
+
+            this.writeLogInfo(log.logName);
+
+            const grid = new GridTable(document.getElementById(elementId), log.log);
+
+            this.$set(this.logs, log.tabId, {name: log.logName, grid: grid});
+
         },
 
-        createTab: function(){
+        writeLogInfo: function(logName){
+            const infoArea = document.getElementById("logInfo" + _selectedTabId);
+            infoArea.innerHTML = "";
 
-            this.baseTabIndex++;
+            const log = document.createElement("span");
+            log.textContent = logName;
+            log.style["margin-right"] = "10px";
+            const debugOnly = document.createElement("label");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.classList.add("debug-only");
+            debugOnly.append(checkbox,"Debug only");
 
-            this.currentTabId = this.baseTabIndex;
+            infoArea.appendChild(log);
+            infoArea.appendChild(debugOnly);
 
-            this.$set(this.tabIds, this.baseTabIndex, this.baseTabIndex);
-
-            this.$nextTick(() => {
-
-                $("#apexArea .tab-area").tabs("refresh");
-
-                const newTabIndex = $("#apexArea .tab-area ul li").length - 2;
-
-                this.setSortableAttribute();
-
-                $("#apexArea .tab-area").tabs({ active: newTabIndex});
-
-            });
-        },
-
-        setSortableAttribute: function(){
-            if (Object.keys(this.tabIds).length > 1) {
-                $("#apexTabs").sortable("enable");
-            } else {
-                $("#apexTabs").sortable("disable");
-            }
-        },
-
-        getActiveGridElementId: function(){
-            return "#apexGrid" + this.currentTabId;
-        },
-
-        setLog: function(tabId, log){
-            const gridSelector = "#apexGrid" + tabId;
-            const grid = new GridTable(document.querySelector(gridSelector), log.data);
-            this.$set(this.logs, tabId, {name: log.name, grid: grid});
         },
 
         //------------------------------------------------
         // Filter debug only
         //------------------------------------------------
-        debugOnly: function(e) {
-            if (e.target.checked) {
+        onDebugOnly: function(e){
+            if (e.target.checked == true) {
                 this.filterLog();
             } else {
                 this.clearFilter();
@@ -144,21 +93,27 @@ export default {
         },
 
         filterLog: function(){
-            const grid = this.logs[this.currentTabId].grid;
-            grid.filter(EVENT_COLUMN_INDEX,USER_DEBUG);
+            const elementId = this.getActiveGridElementId();
+            const grid = this.logs[elementId].grid;
+            if(grid){
+                grid.filter(EVENT_COLUMN_INDEX,USER_DEBUG);
+            }
         },
 
         clearFilter: function(){
-            const grid = this.logs[this.currentTabId].grid;
-            grid.clearFilter();
+            const elementId = this.getActiveGridElementId();
+            const grid = this.logs[elementId].grid;
+            if(grid){
+                grid.clearFilter();
+            }
         },
 
-        // export
         exportCsv: function(){
-            const grid = this.logs[this.currentTabId].grid;
+            const elementId = this.getActiveGridElementId();
+            const grid = this.logs[elementId].grid;
             if(grid){
                 grid.export({
-                    fileName: _logNames[elementId],
+                    fileName: this.logs[elementId].name,
                     bom: true
                 });
             }
@@ -167,9 +122,9 @@ export default {
     },
 
     mounted(){
-        $("#apexArea .tab-area").tabs();
-        $("#apexTabs").sortable({items: "li:not(.add-tab-li)", delay: 150});
-        this.createTab();
+        this.tabComponent.afterAddTab(this.createTab);
+        this.tabComponent.create(document.getElementById("apexTabArea"), "apexTab", "Grid");
+        this.tabComponent.addTab();
     }
 }
 </script>

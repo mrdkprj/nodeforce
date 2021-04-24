@@ -34,8 +34,13 @@ app.post("/test", (req, res) => {
 })
 
 app.post('/soql', async (req, res) => {
-	console.log("soql")
 	return await controller.query(req)
+		.then(r => res.status(200).json(r))
+		.catch(e => res.status(400).json(e.message))
+})
+
+app.post('/apex', async (req, res) => {
+	return await controller.execute(req)
 		.then(r => res.status(200).json(r))
 		.catch(e => res.status(400).json(e.message))
 })

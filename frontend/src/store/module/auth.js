@@ -49,16 +49,16 @@ export default {
 
         async destroy ({ commit, dispatch }, data) {
             return await dispatch("http/delete", { url: "/logout", data }, { root: true })
-                        .then(res => {console.log("destroy done"); return commit("create", res.data);})
+                        .then(res => res)
                         .catch(err => err)
-                        .finally(res => commit("destroy"));
+                        .finally(() => commit("destroy"));
         },
 
         async request ({ commit, dispatch }, data) {
-            console.log("request")
+            commit("request");
             return await dispatch("http/post", { url: data.url, data:data.data }, { root: true })
                         .then(res => res.data)
-                        //.finally(() => state.inprogress = false)
+                        .finally(() => commit("end"))
         },
     }
   }

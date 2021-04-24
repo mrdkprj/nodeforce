@@ -1,5 +1,4 @@
 const soap = require('soap');
-const fs = require('fs');
 
 class SoapClient {
 
@@ -16,7 +15,7 @@ class SoapClient {
     }
 
     static async init(params = {}) {
-        const version = params.version ? params.version : "28.0";
+        const version = params.version ? params.version : "43.0";
         const host = params.host ? params.host : 'login.salesforce.com';
         const endpoint = params.serverUrl ? params.serverUrl : `https://${host}/services/Soap/u/${version}`;
 
@@ -30,8 +29,6 @@ class SoapClient {
 
     async login(options = {}){
 
-        console.log("this.client.describe()")
-
         if(!options.username || !options.password){
             throw new Error("Must provide username/password or session_id/server_url.");
         }
@@ -39,15 +36,13 @@ class SoapClient {
         return await this.client.loginAsync({username: options.username, password: options.password})
             .then(results => {
                 const result = results[0].result;
-                console.log("login ok")
                 return {username:result.userInfo.userName, token:result.sessionId, serverUrl:result.serverUrl};
             })
     }
 
     async query(soql){
         return await this.client.queryAsync({queryString: soql})
-            .then(results => { return {done: true, result: results[0].result}})
-            .catch(results => {return {done: false, message:results.cause.root.Envelope.Body.Fault.faultstring}})
+            .then(results => results[0].result)
     }
 
     async queryAll(soql){

@@ -26,6 +26,13 @@ export default {
             this.$emit("requestOpenHistory");
         },
 
+        onRerunClick: function(e){
+            const tabId = this.getActiveTabElementId();
+            if (this.sObjects[tabId]) {
+                this.$emit("requestRerunSoql", this.sObjects[tabId].soql);
+            }
+        },
+
         createTab: function(newTab){
             const newTabId = newTab.tabIndex;
 
@@ -52,6 +59,7 @@ export default {
             const btn = document.createElement("div");
             btn.classList.add("refresh-btn-sm");
             btnArea.appendChild(btn);
+            btnArea.addEventListener("click", this.onRerunClick);
 
             soqlInfoDiv.appendChild(infoDiv);
             soqlInfoDiv.appendChild(btnArea);
@@ -74,29 +82,15 @@ export default {
             return this.tabComponent.activeTabIndex;
         },
 
-        getActiveGridElementId: function(){
-            return "soqlGrid" + getActiveTabElementId();
-        },
-
         setQueryResult: function(result){
             const gridSelector = "soqlGrid" + result.soqlInfo.tabId;
+            document.getElementById("soqlInfo" + result.soqlInfo.tabId).textContent = result.soqlInfo.timestamp;
             const grid = new GridTable(document.getElementById(gridSelector), {rows: result.rows, header:result.columns});
             this.$set(this.sObjects, result.soqlInfo.tabId, {grid:grid, soql:result.soqlInfo.soql});
         },
 
-        //------------------------------------------------
-        // Rerun SOQL
-        //------------------------------------------------
-        rerun: function(e){
-            const tabId = this.getActiveTabElementId();
-            if (this.sObjects[tabId]) {
-                this.$emit("onExecuteRequest", this.sObjects[tabId].soql);
-            }
-        },
-
-        // export
         exportCsv: function(){
-            const tabId = this.getActiveGridElementId();
+            const tabId = this.getActiveTabElementId();
             const grid = this.sObjects[tabId].grid;
 
             if(grid){
