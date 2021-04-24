@@ -1,6 +1,6 @@
 <template>
     <div id="overlay" class="requesting-overlay" :class="state">
-        <div id="overlayContent" class="overlay-content noselect">{{message}}</div>
+        <div id="overlayContent" class="overlay-content">{{message}}</div>
         <div class="loader"></div>
     </div>
 </template>
@@ -34,11 +34,11 @@ export default {
             this.message = message;
         },
 
-        showOverlay: function(){
+        show: function(){
             this.displayed = true;
         },
 
-        hideOverlay: function(){
+        hide: function(){
             this.displayed = false;
         }
 

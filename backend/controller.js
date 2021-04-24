@@ -28,7 +28,9 @@ module.exports = {
     },
 
     authenticate: async (body, response) => {
-        return await SoapClient.init().then(client => client.login(body))
+        return await SoapClient.init(body)
+            .then(client => client.login(body))
+            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring)})
     },
 
     query: async (req) => {

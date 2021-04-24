@@ -3,9 +3,6 @@ import App from "./App.vue"
 import router from "./router"
 import store from "@/store"
 import jQuery from "jquery"
-global.jQuery = jQuery
-global.$ = jQuery
-window.$ = window.jQuery = require("jquery")
 import GridTable from "./assets/js/gridtable.js";
 global.GridTable = GridTable
 import Tab from "./assets/js/tab.js";

@@ -27,15 +27,23 @@ export default {
 
         request(state){
             state.inprogress = true;
+        },
+
+        end(state){
+            state.inprogress = false;
         }
     },
 
     actions: {
 
         async create ({ commit, dispatch }, data) {
+            commit("request");
+
+            const host = data.sandbox ? "test.salesforce.com" : "login.salesforce.com";
+            data.host = host;
             return await dispatch("http/post", { url: "/login", data }, { root: true })
                         .then(res => commit("create", res.data))
-                        .catch(ex => ex.message);
+                        .finally(() => commit("end"))
 
         },
 
@@ -50,6 +58,7 @@ export default {
             console.log("request")
             return await dispatch("http/post", { url: data.url, data:data.data }, { root: true })
                         .then(res => res.data)
+                        //.finally(() => state.inprogress = false)
         },
     }
   }

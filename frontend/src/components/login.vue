@@ -1,5 +1,6 @@
 <template>
-    <div id="loginFormArea">
+    <div id="loginFormArea" :class="{'fault': hasError}">
+        <progress-line></progress-line>
         <div id="loginMessageArea" v-show="hasError">
             <div id="loginMessage">{{message}}</div>
         </div>
@@ -10,17 +11,17 @@
                 <div class="input-area">
                     <div>
                         <div>User Name</div>
-                        <div><input type="text" id="username" value="" v-model="username"/></div>
+                        <div><input type="text" id="username" value="" autocomplete="username" v-model="username"/></div>
                     </div>
                     <div>
                         <div>Password</div>
-                        <div><input type="password" id="password" value="" v-model="password"/></div>
+                        <div><input type="password" id="password" value="" autocomplete="current-password" v-model="password"/></div>
                     </div>
                     <div>
                         <div>Environment</div>
                         <div class="selection">
-                            <input type="radio" id="production" name="envtype" checked/><label for="production" class="radio">Production</label>
-                            <input type="radio" id="sandbox" name="envtype"/><label for="sandbox" class="radio">Sandbox</label>
+                            <input type="radio" id="production" name="envtype" value="false" v-model="sandbox" checked/><label for="production" class="radio">Production</label>
+                            <input type="radio" id="sandbox" name="envtype" value="true" v-model="sandbox" /><label for="sandbox" class="radio">Sandbox</label>
                         </div>
                     </div>
                 </div>
@@ -33,12 +34,19 @@
 </template>
 
 <script>
+import progress from "@/components/progress.vue";
+
 export default {
+    components: {
+        "progress-line": progress,
+    },
+
     data () {
         return {
             message: "",
             username: "",
             password: "",
+            sandbox: "false",
         }
     },
 
@@ -55,13 +63,15 @@ export default {
     methods: {
         login () {
 
+            this.message = "";
             this.$store.dispatch(
                 "auth/create",
                 {
                     username: this.username,
-                    password: this.password
+                    password: this.password,
+                    sandbox: this.sandbox == "true",
                 }
-            ).then(e => {this.message = e;})
+            ).then(e => e).catch(e => this.message = e.message)
         }
     },
     /*
@@ -76,7 +86,7 @@ export default {
         //this.$store.dispatch("auth/destroy")
         // already logined
         if (this.$store.state.auth.token) {
-        this.$router.push("/")
+            this.$router.push("/")
         }
     },
     /*
@@ -90,6 +100,7 @@ export default {
 </script>
 
 <style scoped>
+
     #loginFormArea{
         display: flex;
         justify-content: center;
@@ -174,8 +185,8 @@ export default {
         height: 30%;
     }
 
-    .login-form input[type=text],
-    .login-form input[type=password]{
+    input[type=text],
+    input[type=password]{
         border: 1px solid #888;
         line-height: 35px;
         font-size: 14px;
@@ -183,6 +194,11 @@ export default {
         border-radius: 4px;
         text-indent: 5px;
         width:100%;
+    }
+
+    .fault input[type=text],
+    .faultinput[type=password]{
+        background-color: red;
     }
 
     .selection{
