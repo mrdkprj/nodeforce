@@ -60,7 +60,7 @@ export default {
                     }
                 }
             ).then(res => this.displayLog(res))
-            .catch(ex => this.$refs.message.displayError(ex))
+            .catch(ex => this.$refs.message.displayError(ex.message))
         },
 
         displayLog: function(json){

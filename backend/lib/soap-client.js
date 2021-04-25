@@ -4,53 +4,68 @@ class SoapClient {
 
     constructor(client, params){
         this.client = client;
-        this.client.addSoapHeader((methodName, args, headers, req) => {
-            return {
-                "tns:SessionHeader": {"tns:sessionId": params.sessionId},
-                "tns:AllOrNoneHeader" : {"tns:allOrNone": true},
-                "tns:QueryOptions":{"tns:batchSize": 1}
-                //"tns:LocaleOptions" : {"tns:language": options[:language]}
-            };
-        });
+
+        const header = {
+            "tns:SessionHeader": {"tns:sessionId": params.sessionId},
+            "tns:AllOrNoneHeader" : {"tns:allOrNone": params.allOrNone},
+            "tns:LocaleOptions" : {"tns:language": params.language},
+        };
+
+        if(params.batchSize){
+            header["tns:QueryOptions"] = {"tns:batchSize": params.batchSize};
+        }
+
+        if(params.debuggingHeader){
+            header["tns:DebuggingHeader"] = {"tns:categories" : params.debuggingHeader};
+        }
+
+        this.client.addSoapHeader((methodName, args, headers, req) => header);
     }
 
     static async init(params = {}) {
-        const version = params.version ? params.version : "43.0";
-        const host = params.host ? params.host : 'login.salesforce.com';
-        const endpoint = params.serverUrl ? params.serverUrl : `https://${host}/services/Soap/u/${version}`;
 
-        const wsdlPath = "./resource/partner.wsdl.xml";
         const options = {
-            endpoint: endpoint
+            endpoint: params.serverUrl
         }
 
-        return new SoapClient(await soap.createClientAsync(wsdlPath, options), params)
+        return new SoapClient(await soap.createClientAsync(params.wsdl, options), params)
     }
 
-    async login(options = {}){
+    async login(username, password){
 
-        if(!options.username || !options.password){
+        if(!username || !password){
             throw new Error("Must provide username/password or session_id/server_url.");
         }
 
-        return await this.client.loginAsync({username: options.username, password: options.password})
+        return await this.client.loginAsync({username: username, password: password})
             .then(results => {
                 const result = results[0].result;
                 return {username:result.userInfo.userName, token:result.sessionId, serverUrl:result.serverUrl};
             })
+            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
     }
 
     async query(soql){
         return await this.client.queryAsync({queryString: soql})
             .then(results => results[0].result)
+            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
     }
 
     async queryAll(soql){
         await this.client.queryAllAsync({queryString: soql})
             .then(r => r)
-            .catch(e => {throw new Error(e.message)})
+            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
     }
 
+    async executeAnonymous(code){
+        const headerKey = "2";
+        const bodyKey = "0";
+        return await this.client.executeAnonymousAsync({string: code})
+            .then(results => {
+                return {header: results[headerKey], body:results[bodyKey]};
+            })
+            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
+    }
 }
 
 module.exports = SoapClient;

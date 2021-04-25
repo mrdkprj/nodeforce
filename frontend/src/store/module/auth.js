@@ -39,8 +39,6 @@ export default {
         async create ({ commit, dispatch }, data) {
             commit("request");
 
-            const host = data.sandbox ? "test.salesforce.com" : "login.salesforce.com";
-            data.host = host;
             return await dispatch("http/post", { url: "/login", data }, { root: true })
                         .then(res => commit("create", res.data))
                         .finally(() => commit("end"))
@@ -56,6 +54,7 @@ export default {
 
         async request ({ commit, dispatch }, data) {
             commit("request");
+
             return await dispatch("http/post", { url: data.url, data:data.data }, { root: true })
                         .then(res => res.data)
                         .finally(() => commit("end"))

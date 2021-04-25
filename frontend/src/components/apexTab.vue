@@ -55,16 +55,17 @@ export default {
 
             const elementId = "apexGrid" + log.tabId;
 
-            this.writeLogInfo(log.logName);
+            this.writeLogInfo(log.tabId, log.logName);
 
-            const grid = new GridTable(document.getElementById(elementId), log.log);
+            const grid = new GridTable(document.getElementById(elementId), {rows: log.rows, header:log.header});
 
             this.$set(this.logs, log.tabId, {name: log.logName, grid: grid});
 
         },
 
-        writeLogInfo: function(logName){
-            const infoArea = document.getElementById("logInfo" + _selectedTabId);
+        writeLogInfo: function(tabId, logName){
+            console.log(tabId)
+            const infoArea = document.getElementById("logInfo" + tabId);
             infoArea.innerHTML = "";
 
             const log = document.createElement("span");

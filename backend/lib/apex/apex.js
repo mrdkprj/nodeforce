@@ -8,22 +8,29 @@ class Apex{
     }
 
     static parse(req, apexResult){
-console.log(apexResult)
-        const result = apexResult.DebuggingInfo.debugLog;
 
-        let logs = result.logs.split("\n").map(str => this.splitLimit(str));
+        const result = apexResult.body.result;
+
+        if(result.success == false){
+            if(result.compiled){
+                throw new Error(result.exceptionStackTrace + "\n" + result.exceptionMessage);
+            }
+
+            throw new Error("Line " + result.line + "\n" + result.compileProblem);
+        }
+
+        const log = apexResult.header.DebuggingInfo.debugLog;
+
+        let logs = log.split("\n").map(str => this.splitLimit(str));
 
         logs = logs.filter(log => log.length >= 1).map(log => this.format(log));
 
         return {
-            done: true,
-            data: JSON.stringify({
                 logName: "executeAnonymous@" + new Date().toLocaleString('ja-JP'),
                 header: LOG_HEADER,
                 rows: logs,
                 tabId: req.tabId,
-            })
-        };
+            };
     };
 
     static splitLimit(str){

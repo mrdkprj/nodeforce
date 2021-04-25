@@ -12,14 +12,13 @@ app.use(cors())
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/main', (req, res) => {
-	console.log("/")
 	res.render("index.html", {});
 })
 
 // POST method route
 app.post('/login', async (req, res) => {
 
-	return await controller.authenticate(req.body,res)
+	return await controller.authenticate(req)
 		.then(r => res.status(200).json(r))
 		.catch(e => res.status(400).json(e.message))
 })

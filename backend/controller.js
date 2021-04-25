@@ -1,15 +1,8 @@
 const fs = require('fs');
 const SoapClient = require("./lib/soap-client.js");
-const ToolingClient = require("./lib/tooling-client.js")
+const api = require("./lib/api.js");
 const soql = require("./lib/soql/soql.js");
 const apex = require("./lib/apex/apex.js");
-
-function header(req){
-    return {
-        sessionId: req.header("Authorization"),
-        serverUrl: req.header("Server-Url"),
-    }
-}
 
 module.exports = {
 
@@ -18,32 +11,35 @@ module.exports = {
         return JSON.parse(text);
     },
 
-    authenticate: async (body, response) => {
-        return await SoapClient.init(body)
-            .then(client => client.login(body))
-            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring)})
+    authenticate: async (req) => {
+        const params = api.createParameters(api.ApiType.Partner, req);
+
+        return await SoapClient.init(params)
+            .then(client => client.login(req.body.username, req.body.password))
     },
 
     query: async (req) => {
 
+        const apiType = req.body.tooling ? api.ApiType.Tooling : api.ApiType.Partner;
+
+        const params = api.createParameters(apiType, req);
+
         const requestParam = soql.createParams(req.body);
 
-        return await SoapClient.init(header(req))
+        return await SoapClient.init(params)
             .then(client => client.query(requestParam)
             .then(queryResult => soql.getResponse(req.body, queryResult)))
-            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring)})
-
     },
 
     execute: async (req) => {
 
+        const params = api.createParameters(api.ApiType.Apex, req);
+
         const requestParam = apex.createParams(req.body);
 
-        return await ToolingClient.init(header(req))
+        return await SoapClient.init(params)
             .then(client => client.executeAnonymous(requestParam)
             .then(queryResult => apex.parse(req.body, queryResult)))
-            .catch(ex => {console.log(ex);throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring)})
-
     },
 
 
