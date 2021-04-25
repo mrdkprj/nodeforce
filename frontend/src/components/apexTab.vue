@@ -75,6 +75,7 @@ export default {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
             checkbox.classList.add("debug-only");
+            checkbox.addEventListener("change", this.onDebugOnly);
             debugOnly.append(checkbox,"Debug only");
 
             infoArea.appendChild(log);
@@ -94,7 +95,7 @@ export default {
         },
 
         filterLog: function(){
-            const elementId = this.getActiveGridElementId();
+            const elementId = this.getActiveTabElementId();
             const grid = this.logs[elementId].grid;
             if(grid){
                 grid.filter(EVENT_COLUMN_INDEX,USER_DEBUG);
@@ -102,7 +103,7 @@ export default {
         },
 
         clearFilter: function(){
-            const elementId = this.getActiveGridElementId();
+            const elementId = this.getActiveTabElementId();
             const grid = this.logs[elementId].grid;
             if(grid){
                 grid.clearFilter();
@@ -110,7 +111,7 @@ export default {
         },
 
         exportCsv: function(){
-            const elementId = this.getActiveGridElementId();
+            const elementId = this.getActiveTabElementId();
             const grid = this.logs[elementId].grid;
             if(grid){
                 grid.export({

@@ -28,8 +28,7 @@ export default {
     data: function () {
         return {
             tooling: false,
-            //inputSoql: "select firstname,Name,Id,account.name from contact where id in ('0036F00003Vhe7y','0036F00003WqLC4')",
-            inputSoql: "select name from layout limit 1",
+            inputSoql: "select firstname,Name,Id,account.name from contact where id in ('0036F00003Vhe7y','0036F00003WqLC4')",
             sidenavOpened: false
         }
     },

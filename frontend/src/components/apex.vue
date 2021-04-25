@@ -35,9 +35,6 @@ export default {
 
     methods: {
 
-        //------------------------------------------------
-        // Execute Anonymous
-        //------------------------------------------------
         onExecuteClick: function(e){
 
             if (!this.apexCode) {
