@@ -40,13 +40,19 @@ module.exports = {
             const defaults = {"Db":"INFO","Workflow":"INFO","Validation":"INFO","Callout":"INFO","Apex_code":"FINEST","Apex_profiling":"INFO","Visualforce":"INFO","System":"FINE","All":"NONE"};
             const defaultDebugOptions = Object.keys(defaults).map(e => {return {"category": e, "level" : defaults[e]}});
 
+            const debuggingHeader = request.body.debuggingHeader;
+            let debugInfo = [{"category":"All", "level":"INFO"}];
+            if(debuggingHeader){
+                debugInfo = Object.keys(debuggingHeader).map(e => {return {"category": e, "level" : debuggingHeader[e]}})
+            }
+
             return {
                 wsdl: "./resource/apex.wsdl.xml",
                 version: version,
                 sessionId: sessionId,
                 serverUrl: serverUrl.replace("Soap/u/", "Soap/s/"),
                 language: language,
-                debuggingHeader: request.body.debuggingHeader ? request.body.debuggingHeader : defaultDebugOptions,
+                debuggingHeader: debugInfo,
             }
 
         }

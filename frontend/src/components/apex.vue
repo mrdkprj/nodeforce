@@ -4,8 +4,9 @@
             <div>
                 <textarea id="apexCode" class="code-input" spellcheck="false" cols="120" rows="5" v-model="apexCode"></textarea>
             </div>
-            <div>
+            <div class="apex-btn-area">
                 <button type="button" id="executeAnonymousBtn" class="btn btn-main" @click="onExecuteClick">Execute Anonymous</button>
+                <debugopt ref="debugOption"></debugopt>
             </div>
             <message ref="message"></message>
         </div>
@@ -19,12 +20,14 @@
 <script>
 import message from "@/components/message.vue";
 import tab from "@/components/apexTab.vue";
+import debugOption from "@/components/debug-option.vue";
 
 export default {
 
     components: {
         "message" : message,
-        "apextab" : tab
+        "apextab" : tab,
+        "debugopt": debugOption,
     },
 
     data: function () {
@@ -46,6 +49,7 @@ export default {
 
         executeAnonymous: function(code){
 
+            //debuggingHeader
             this.$refs.message.hideMessageArea();
 
             this.$store.dispatch(
@@ -53,7 +57,7 @@ export default {
                 {
                     url: "/apex",
                     data:{
-                        code: code, tabId: this.$refs.tab.getActiveTabElementId()
+                        code: code, debuggingHeader: this.$refs.debugOption.debuggingHeader,tabId: this.$refs.tab.getActiveTabElementId()
                     }
                 }
             ).then(res => this.displayLog(res))
@@ -67,5 +71,10 @@ export default {
     }
 }
 </script>
-<style></style>
+<style>
+    .apex-btn-area{
+        display: flex;
+        align-items: center;
+    }
+</style>
 

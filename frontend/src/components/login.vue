@@ -26,7 +26,7 @@
                     </div>
                 </div>
                 <div class="button-area">
-                    <button class="btn login-btn" @click="login()">Login</button>
+                    <button class="btn login-btn" @click="login()" v-bind:disabled="isInProgress">Login</button>
                 </div>
             </form>
         </div>
@@ -57,7 +57,12 @@ export default {
             }
 
             return false;
+        },
+
+        isInProgress: function(){
+            return this.$store.state.auth.inprogress;
         }
+
     },
 
     methods: {

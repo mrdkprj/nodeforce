@@ -83,9 +83,6 @@ export default {
 
         },
 
-        //------------------------------------------------
-        // Filter debug only
-        //------------------------------------------------
         onDebugOnly: function(e){
             if (e.target.checked == true) {
                 this.filterLog();

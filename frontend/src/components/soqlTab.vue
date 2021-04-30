@@ -1,5 +1,5 @@
 <template>
-    <div div id="soqlTabArea" class="tab-area">
+    <div id="soqlTabArea" class="tab-area">
         <button type="button" id="soqlHistoryBtn" class="btn btn-sub" @click="onHistoryButtonClick">History</button>
         <button type="button" class="btn btn-sub export" @click="exportCsv">Export</button>
     </div>
