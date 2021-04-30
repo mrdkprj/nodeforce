@@ -6,6 +6,7 @@
         </div>
 
         <div class="login-form">
+            <div class="loading" v-show="isInProgress"><loading></loading></div>
             <form class="form-element" @submit.prevent>
             	<div class="padding-area"></div>
                 <div class="input-area">
@@ -35,10 +36,12 @@
 
 <script>
 import progress from "@/components/progress.vue";
+import loading from "@/components/loading.vue";
 
 export default {
     components: {
         "progress-line": progress,
+        "loading": loading,
     },
 
     data () {
@@ -160,6 +163,17 @@ export default {
         border-radius: 6px;
         box-shadow: 0 3px 6px rgb(0 0 0 / 23%);
         color: #e1e0e0;
+    }
+
+    .loading{
+        position: absolute;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
     }
 
     .form-element{
