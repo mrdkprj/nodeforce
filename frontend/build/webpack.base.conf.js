@@ -3,6 +3,9 @@ const path = require('path')
 const utils = require('./utils')
 const config = require('../config')
 const vueLoaderConfig = require('./vue-loader.conf')
+//const VueLoaderPlugin = require('vue-loader');
+const VueLoaderPlugin = require('vue-loader');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 
 function resolve (dir) {
   return path.join(__dirname, '..', dir)
@@ -11,6 +14,13 @@ function resolve (dir) {
 
 
 module.exports = {
+  mode: 'development',
+  optimization: {
+    splitChunks: {
+      name: 'vendor',
+      chunks: 'initial',
+    }
+  },
   context: path.resolve(__dirname, '../'),
   entry: {
     app: './src/main.js'
@@ -64,9 +74,27 @@ module.exports = {
           limit: 10000,
           name: utils.assetsPath('fonts/[name].[hash:7].[ext]')
         }
-      }
+      },
+      {
+        test: /\.(sc|c|sa)ss$/,
+        use: [
+          // vue-style-loaderをMiniCssExtractPlugin.loaderに変更
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          'sass-loader',
+        ]
+      },
     ]
   },
+  plugins: [
+    new VueLoaderPlugin(),
+    // MiniCssExtractPluginのインスタンスを追記
+    // ここで設定するfilenameは出力するファイル名
+    new MiniCssExtractPlugin({
+      filename: '[name]-[hash].css',
+    })
+  ],
+
   node: {
     // prevent webpack from injecting useless setImmediate polyfill because Vue
     // source contains it (although only uses it if it's native).

@@ -1,7 +1,7 @@
 'use strict'
 const path = require('path')
 const config = require('../config')
-const ExtractTextPlugin = require('extract-text-webpack-plugin')
+//const ExtractTextPlugin = require('extract-text-webpack-plugin')
 const packageConfig = require('../package.json')
 
 exports.assetsPath = function (_path) {
@@ -11,8 +11,9 @@ exports.assetsPath = function (_path) {
 
   return path.posix.join(assetsSubDirectory, _path)
 }
-
+/*
 exports.cssLoaders = function (options) {
+
   options = options || {}
 
   const cssLoader = {
@@ -99,3 +100,4 @@ exports.createNotifierCallback = () => {
     })
   }
 }
+*/

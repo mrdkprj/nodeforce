@@ -1,5 +1,5 @@
 <template>
-    <div id="loginFormArea" :class="{'fault': hasError}">
+    <div id="loginFormArea">
         <progress-line></progress-line>
         <div id="loginMessageArea" v-show="hasError">
             <div id="loginMessage">{{message}}</div>
@@ -138,7 +138,6 @@ export default {
         border-top: 1px solid #ccc;
         border-bottom: 1px solid #ccc;
         font-size: 14px;
-        /*height: 52px;*/
     }
 
     #loginMessage{
@@ -174,6 +173,7 @@ export default {
         justify-content: center;
         align-items: center;
         z-index: 2000;
+        background-color: rgb(204 204 204 / 30%);
     }
 
     .form-element{
@@ -213,11 +213,6 @@ export default {
         border-radius: 4px;
         text-indent: 5px;
         width:100%;
-    }
-
-    .fault input[type=text],
-    .faultinput[type=password]{
-        background-color: red;
     }
 
     .selection{

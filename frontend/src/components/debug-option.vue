@@ -100,6 +100,7 @@ export default {
         flex-direction: column;
         box-shadow: 0 3px 6px rgb(0 0 0 / 23%);
         font-size:12px;
+        border-radius: 8px;
     }
 
     .open .debug-option-tbl{

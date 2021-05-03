@@ -3,7 +3,6 @@ export default {
     namespaced: true,
 
     state: {
-        tenant: "",
         username: "",
         token: "",
         inprogress: false,
@@ -12,14 +11,12 @@ export default {
     mutations: {
 
         create (state, data) {
-            state.tenant = "";
             state.token = data.token;
             state.username = data.username;
             state.serverUrl = data.serverUrl;
         },
 
         destroy (state) {
-            state.tenant = "";
             state.username = "";
             state.token = "";
             state.serverUrl = "";
