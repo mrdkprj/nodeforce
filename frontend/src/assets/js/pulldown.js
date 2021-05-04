@@ -238,3 +238,5 @@ class Pulldown{
 	}
 
 }
+
+export default Pulldown;
