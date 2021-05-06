@@ -1,28 +1,13 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-//import HelloWorld from '@/components/HelloWorld'
 import Login from '@/components/login'
 import Main from '@/components/main'
 import Store from "@/store/index.js"
 
 Vue.use(Router)
-/*
-export default new Router({
-  //
-  routes: [
-    {
-      path: '/',
-      name: 'HelloWorld',
-      component: HelloWorld
-    }
-  ]
-  //
-  routes:[]
-})
-*/
 
 const router = new Router({
-  //mode: "history", // URLはハッシュ形式「#～～」ではなく「/～～」とする
+  //mode: "history",
   routes: [
     {
       path: '/',

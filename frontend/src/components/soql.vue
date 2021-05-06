@@ -69,14 +69,11 @@ export default {
             new GridTable(document.getElementById(elementId), json);
         },
 
-        //------------------------------------------------
-        // Execute SOQL
-        //------------------------------------------------
         onExecuteSoqlBtn: function(e){
             this.executeSoql();
         },
 
-        executeSoql: function(soql) {
+        executeSoql: async function(soql) {
 
             let inputSoql = soql ? soql : this.inputSoql;
 
@@ -86,24 +83,20 @@ export default {
 
             this.$refs.message.hideMessageArea();
 
-            this.$store.dispatch(
-                "auth/request",
-                {
+            try{
+                const params = {
                     url: "/soql",
-                    data:{
-                        soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.getActiveTabElementId()
-                    }
-                }
-            ).then(res => this.displayQueryResult(res))
-            .catch(e => this.$refs.message.displayError(e))
-        },
+                    data:{soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.getActiveTabElementId()}
+                };
 
-        //------------------------------------------------
-        // Query callbacks
-        //------------------------------------------------
-        displayQueryResult: function(json){
-            this.$refs.tab.setQueryResult(json);
-            this.$refs.history.addItem(json.soqlInfo.soql);
+                const res = await this.$store.dispatch("auth/request", params);
+
+                this.$refs.tab.setQueryResult(res);
+                this.$refs.history.addItem(res.soqlInfo.soql);
+
+            }catch(ex){
+                this.$refs.message.displayError(ex);
+            }
         },
 
         openHistory: function(){

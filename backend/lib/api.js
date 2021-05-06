@@ -37,9 +37,6 @@ module.exports = {
 
         if(apiType == ApiType.Apex){
 
-            const defaults = {"Db":"INFO","Workflow":"INFO","Validation":"INFO","Callout":"INFO","Apex_code":"FINEST","Apex_profiling":"INFO","Visualforce":"INFO","System":"FINE","All":"NONE"};
-            const defaultDebugOptions = Object.keys(defaults).map(e => {return {"category": e, "level" : defaults[e]}});
-
             const debuggingHeader = request.body.debuggingHeader;
             let debugInfo = [{"category":"All", "level":"INFO"}];
             if(debuggingHeader){

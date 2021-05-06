@@ -47,25 +47,25 @@ export default {
             this.executeAnonymous(this.apexCode);
         },
 
-        executeAnonymous: function(code){
+        executeAnonymous: async function(code){
 
-            //debuggingHeader
             this.$refs.message.hideMessageArea();
 
-            this.$store.dispatch(
-                "auth/request",
-                {
+            try{
+                const params = {
                     url: "/apex",
                     data:{
-                        code: code, debuggingHeader: this.$refs.debugOption.debuggingHeader,tabId: this.$refs.tab.getActiveTabElementId()
+                        code: code,
+                        debuggingHeader: this.$refs.debugOption.debuggingHeader,
+                        tabId: this.$refs.tab.getActiveTabElementId()
                     }
-                }
-            ).then(res => this.displayLog(res))
-            .catch(ex => this.$refs.message.displayError(ex.message))
-        },
+                };
 
-        displayLog: function(json){
-            this.$refs.tab.setLog(json);
+                const res = await this.$store.dispatch("auth/request", params);
+                this.$refs.tab.setLog(res);
+            }catch(ex){
+                this.$refs.message.displayError(ex.message);
+            }
         },
 
     }

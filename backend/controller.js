@@ -1,5 +1,5 @@
 const fs = require('fs');
-const SoapClient = require("./lib/soap-client.js");
+const soapClient = require("./lib/soap-client.js");
 const api = require("./lib/api.js");
 const soql = require("./lib/soql/soql.js");
 const apex = require("./lib/apex/apex.js");
@@ -14,7 +14,7 @@ module.exports = {
     authenticate: async (req) => {
         const params = api.createParameters(api.ApiType.Partner, req);
 
-        return await SoapClient.init(params)
+        return await soapClient.init(params)
             .then(client => client.login(req.body.username, req.body.password))
     },
 
@@ -26,7 +26,7 @@ module.exports = {
 
         const requestParam = soql.createParams(req.body);
 
-        return await SoapClient.init(params)
+        return await soapClient.init(params)
             .then(client => client.query(requestParam)
             .then(queryResult => soql.getResponse(req.body, queryResult)))
     },
@@ -37,7 +37,7 @@ module.exports = {
 
         const requestParam = apex.createParams(req.body);
 
-        return await SoapClient.init(params)
+        return await soapClient.init(params)
             .then(client => client.executeAnonymous(requestParam)
             .then(queryResult => apex.parse(req.body, queryResult)))
     },

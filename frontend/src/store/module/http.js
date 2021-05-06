@@ -1,10 +1,26 @@
 import axios from 'axios'
 
 export default {
+
     namespaced: true,
 
+    state: {
+        inProgress: false,
+    },
+
+    mutations: {
+
+        start(state){
+            state.inprogress = true;
+        },
+
+        end(state){
+            state.inprogress = false;
+        }
+    },
+
     actions: {
-        async request ({ dispatch, rootState }, { method, url, data, error }) {
+        async request ({ commit, dispatch, rootState }, { method, url, data, error }) {
             const headers = {}
             headers['Content-Type'] = 'application/json'
             if (rootState.auth.token) {
@@ -23,9 +39,17 @@ export default {
 
             console.log("ax")
 
-            return await axios(options)
-                .then(res => {console.log(res);return res;})
-                .catch(e => {console.log(e);throw new Error(e.response.data)})
+            try{
+                commit("start");
+                const res = await axios(options);
+                console.log(res);
+                return res;
+            }catch(e){
+                console.log("req error");
+                throw new Error(e.response.data);
+            }finally{
+                commit("end");
+            }
 
         },
 

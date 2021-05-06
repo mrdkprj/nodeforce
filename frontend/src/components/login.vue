@@ -69,42 +69,36 @@ export default {
     },
 
     methods: {
-        login () {
+
+        login: async function(){
 
             this.message = "";
-            this.$store.dispatch(
-                "auth/create",
-                {
+
+            try{
+
+                const params = {
                     username: this.username,
                     password: this.password,
                     sandbox: this.sandbox == "true",
-                }
-            ).then(e => e).catch(e => this.message = e.message)
-        }
-    },
-    /*
-    computed: {
-        token () {
-        return this.$store.state.auth.token
-        }
-    },*/
+                };
 
-    created: function () {
-        console.log("login created")
-        //this.$store.dispatch("auth/destroy")
-        // already logined
-        if (this.$store.state.auth.token) {
-            this.$router.push("/")
-        }
-    },
-    /*
-    watch: {
-        token (newToken) {
-        console.log("token")
-        this.$router.push("/")
-        }
-    }*/
+                const res = await this.$store.dispatch("auth/create",params);
+
+                console.log("login ok")
+
+            }catch(ex){
+                this.message = ex.message;
+            }
+        },
+
+        created: function () {
+            if (this.$store.getters.isAuthenticated) {
+                this.$router.push("/")
+            }
+        },
+
     }
+}
 </script>
 
 <style scoped>

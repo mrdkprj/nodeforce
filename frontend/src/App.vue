@@ -9,12 +9,16 @@ export default {
     name: "App",
     computed: {
         token () {
+            console.log("token")
+            console.log(this.$store)
             return this.$store.state.auth.token
         }
     },
 
     watch: {
         token (newToken) {
+            console.log(newToken)
+            console.log(this.$store.state.auth.token)
             if (this.$store.state.auth.token) {
                 this.$router.push('/')
             }else{
@@ -28,9 +32,7 @@ export default {
 <style>
     @import "./assets/css/gridtable.css";
     @import "./assets/css/tab.css";
-    /* ------------------------------
-    Common
-    ------------------------------ */
+
     * {
         -webkit-box-sizing: border-box;
         -moz-box-sizing: border-box;
@@ -45,9 +47,6 @@ export default {
         background-color: #fff;
     }
 
-    /* ------------------------------
-    Overrides
-    ------------------------------ */
     a{
         text-decoration: none;
     }

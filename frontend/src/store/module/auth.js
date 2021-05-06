@@ -34,27 +34,35 @@ export default {
     actions: {
 
         async create ({ commit, dispatch }, data) {
-            commit("request");
-
-            return await dispatch("http/post", { url: "/login", data }, { root: true })
-                        .then(res => commit("create", res.data))
-                        .finally(() => commit("end"))
-
-        },
-
-        async destroy ({ commit, dispatch }, data) {
-            return await dispatch("http/delete", { url: "/logout", data }, { root: true })
-                        .then(res => res)
-                        .catch(err => err)
-                        .finally(() => commit("destroy"));
+            try{
+                commit("request");
+                const res = await dispatch("http/post", { url: "/login", data }, { root: true });
+                commit("create", res.data);
+            }finally{
+                commit("end")
+            }
         },
 
         async request ({ commit, dispatch }, data) {
-            commit("request");
+            try{
+                commit("request");
+                const res = await dispatch("http/post", { url: data.url, data:data.data }, { root: true });
+                return res.data;
+            }finally{
+                commit("end");
+            }
+        },
 
-            return await dispatch("http/post", { url: data.url, data:data.data }, { root: true })
-                        .then(res => res.data)
-                        .finally(() => commit("end"))
+        async destroy ({ commit, dispatch }, data) {
+
+            try{
+                return await dispatch("http/delete", { url: "/logout", data }, { root: true });
+            }catch(ex){
+
+            }finally{
+                commit("destroy")
+            }
+
         },
     }
   }
