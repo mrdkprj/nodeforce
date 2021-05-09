@@ -1,3 +1,4 @@
+const xml2js = require('xml2js');
 
 const ApiType = {
     Partner:0,
@@ -42,7 +43,9 @@ module.exports = {
             if(debuggingHeader){
                 debugInfo = Object.keys(debuggingHeader).map(e => {return {"category": e, "level" : debuggingHeader[e]}})
             }
-
+            var builder = new xml2js.Builder({headless :true,rootName :"categories"});
+            var xml = builder.buildObject(debugInfo);
+            console.log(xml)
             return {
                 wsdl: "./resource/apex.wsdl.xml",
                 version: version,

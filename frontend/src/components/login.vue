@@ -63,7 +63,7 @@ export default {
         },
 
         isInProgress: function(){
-            return this.$store.state.auth.inprogress;
+            return this.$store.getters.inProgress;
         }
 
     },
@@ -82,9 +82,11 @@ export default {
                     sandbox: this.sandbox == "true",
                 };
 
-                const res = await this.$store.dispatch("auth/create",params);
+                await this.$store.dispatch("auth/create",params);
 
                 console.log("login ok")
+
+                this.$router.push('/')
 
             }catch(ex){
                 this.message = ex.message;

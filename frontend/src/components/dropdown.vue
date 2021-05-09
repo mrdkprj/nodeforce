@@ -23,7 +23,7 @@ export default {
 
     data: function () {
         return {
-            currentUser: this.$store.state.auth.username,
+            currentUser: this.$store.getters.currentUser,
             opened: false
         }
     },
@@ -41,16 +41,10 @@ export default {
 
     methods: {
 
-        logout: function(){
+        logout: async function(){
+            await this.$store.dispatch('auth/destroy');
+            this.$router.push('/login')
             console.log("destroy")
-            //this.$store.dispatch('auth/destroy').then(res => {console.log(res);this.$router.push('/login');})
-            this.$store.dispatch('auth/destroy')//.then(res => res)
-            //const res = this.$store.dispatch('auth/destroy');
-            //this.$store.state.auth.token = "";
-            //this.$store.dispatch('auth/destroy')
-            console.log("destroy and push")
-
-
         },
 
         onDropdownClick: function(e){

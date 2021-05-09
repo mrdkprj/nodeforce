@@ -7,25 +7,6 @@
 <script>
 export default {
     name: "App",
-    computed: {
-        token () {
-            console.log("token")
-            console.log(this.$store)
-            return this.$store.state.auth.token
-        }
-    },
-
-    watch: {
-        token (newToken) {
-            console.log(newToken)
-            console.log(this.$store.state.auth.token)
-            if (this.$store.state.auth.token) {
-                this.$router.push('/')
-            }else{
-                this.$router.push('/login')
-            }
-        }
-    }
 };
 </script>
 

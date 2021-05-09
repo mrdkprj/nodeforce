@@ -3,9 +3,9 @@ export default {
     namespaced: true,
 
     state: {
-        username: "",
         token: "",
-        inprogress: false,
+        username: "",
+        serverUrl: "",
     },
 
     mutations: {
@@ -17,40 +17,23 @@ export default {
         },
 
         destroy (state) {
-            state.username = "";
             state.token = "";
+            state.username = "";
             state.serverUrl = "";
         },
 
-        request(state){
-            state.inprogress = true;
-        },
-
-        end(state){
-            state.inprogress = false;
-        }
     },
 
     actions: {
 
         async create ({ commit, dispatch }, data) {
-            try{
-                commit("request");
-                const res = await dispatch("http/post", { url: "/login", data }, { root: true });
-                commit("create", res.data);
-            }finally{
-                commit("end")
-            }
+            const res = await dispatch("http/post", { url: "/login", data }, { root: true });
+            commit("create", res.data);
         },
 
-        async request ({ commit, dispatch }, data) {
-            try{
-                commit("request");
-                const res = await dispatch("http/post", { url: data.url, data:data.data }, { root: true });
-                return res.data;
-            }finally{
-                commit("end");
-            }
+        async request ({ dispatch }, data) {
+            const res = await dispatch("http/post", { url: data.url, data:data.data }, { root: true });
+            return res.data;
         },
 
         async destroy ({ commit, dispatch }, data) {

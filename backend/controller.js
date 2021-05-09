@@ -12,6 +12,7 @@ module.exports = {
     },
 
     authenticate: async (req) => {
+
         const params = api.createParameters(api.ApiType.Partner, req);
 
         return await soapClient.init(params)

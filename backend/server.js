@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const app = express()
 app.use(bodyParser.json())
-app.use(cors())
+//app.use(cors())
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/main', (req, res) => {

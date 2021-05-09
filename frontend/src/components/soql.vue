@@ -52,7 +52,7 @@ export default {
     methods: {
 
         showTest: function(){
-               this.$refs.message.hideMessageArea();
+            this.$refs.message.hideMessageArea();
 
             this.$store.dispatch(
                 "auth/request",

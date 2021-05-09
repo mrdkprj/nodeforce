@@ -8,7 +8,7 @@
 export default {
     computed: {
         inprogress () {
-            return this.$store.state.auth.inprogress
+            return this.$store.getters.inProgress
         }
     },
 }

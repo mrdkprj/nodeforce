@@ -14,6 +14,8 @@ export default new Vuex.Store({
     },
     getters: {
         isAuthenticated: state => !!state.auth.token,
+        inProgress: state => state.http.inprogress,
+        currentUser: state => state.auth.username,
     },
     plugins: [createPersistedState({
         key: "xxxproject",     // プロジェクト単位の一意の識別子

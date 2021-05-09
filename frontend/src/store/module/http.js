@@ -5,7 +5,7 @@ export default {
     namespaced: true,
 
     state: {
-        inProgress: false,
+        inprogress: false,
     },
 
     mutations: {
@@ -20,12 +20,11 @@ export default {
     },
 
     actions: {
-        async request ({ commit, dispatch, rootState }, { method, url, data, error }) {
+        async request ({ commit, rootState }, { method, url, data }) {
             const headers = {}
             headers['Content-Type'] = 'application/json'
             if (rootState.auth.token) {
                 headers['Authorization'] = rootState.auth.token
-                headers['User-Id'] = rootState.auth.username
                 headers["Server-Url"] = rootState.auth.serverUrl
             }
 
@@ -41,11 +40,8 @@ export default {
 
             try{
                 commit("start");
-                const res = await axios(options);
-                console.log(res);
-                return res;
+                return await axios(options);
             }catch(e){
-                console.log("req error");
                 throw new Error(e.response.data);
             }finally{
                 commit("end");

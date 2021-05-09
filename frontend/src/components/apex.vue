@@ -39,15 +39,14 @@ export default {
     methods: {
 
         onExecuteClick: function(e){
-
-            if (!this.apexCode) {
-                return;
-            }
-
             this.executeAnonymous(this.apexCode);
         },
 
         executeAnonymous: async function(code){
+
+            if (!this.apexCode) {
+                return;
+            }
 
             this.$refs.message.hideMessageArea();
 

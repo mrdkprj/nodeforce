@@ -1,4 +1,5 @@
 const soap = require('soap');
+const fs = require('fs');
 
 class SoapClient {
 
@@ -48,13 +49,13 @@ class SoapClient {
     async query(soql){
         return await this.client.queryAsync({queryString: soql})
             .then(results => results[0].result)
-            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
+            .catch(ex => {throw new Error(ex.root.Envelope.Body.Fault.faultstring);})
     }
 
     async queryAll(soql){
         await this.client.queryAllAsync({queryString: soql})
             .then(r => r)
-            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
+            .catch(ex => {throw new Error(ex.root.Envelope.Body.Fault.faultstring);})
     }
 
     async executeAnonymous(code){
@@ -64,7 +65,7 @@ class SoapClient {
             .then(results => {
                 return {header: results[headerKey], body:results[bodyKey]};
             })
-            .catch(ex => {throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
+            .catch(ex => {console.log(ex);throw new Error(ex.cause.root.Envelope.Body.Fault.faultstring);})
     }
 }
 
