@@ -1,10 +1,10 @@
-const fs = require('fs');
 const axios =  require('axios');
 const xml2js = require('xml2js');
 const parseOptions = {ignoreAttrs : true,explicitArray :false, tagNameProcessors: [xml2js.processors.stripPrefix]}
 const api  = require( "./helper.js");
 const soql = require("./soql/soql.js");
 const apex = require("./apex/apex.js");
+const { request } = require('express');
 const headers = {
     "Content-Type": "text/xml",
     "SOAPAction": '""'
@@ -37,11 +37,6 @@ function createCallOptions(params){
 
 module.exports = {
 
-        test: () => {
-            const text = fs.readFileSync("./resource/sample.json");
-            return JSON.parse(text);
-        },
-
         login: async (request) => {
 
             const params = api.createLoginParameters(request);
@@ -65,7 +60,14 @@ module.exports = {
 
             const response = await call(createCallOptions(params));
             const result = response.Body.queryResponse.result;
-            return soql.getResponse(request, result);
+            return soql.parse(request, result);
+        },
+
+        listSobject: async (request) => {
+
+            const params = api.createListSobjectParameters(request);
+            const response = await call(createCallOptions(params));
+            return {list: response.Body.describeGlobalResponse.result.sobjects};
         },
 
         execute: async (request) => {

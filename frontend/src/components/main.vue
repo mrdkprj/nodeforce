@@ -18,6 +18,7 @@
             </div>
 
             <div id="describeContent">
+                <describe ref="describe"></describe>
             </div>
 
             <div id="apexContent">
@@ -35,13 +36,14 @@ import progress from "@/components/progress.vue";
 import dropdown from "@/components/dropdown.vue";
 import menus from "@/components/menus.vue";
 import soql from "@/components/soql.vue";
+import describe from "@/components/describe.vue";
 import apex from "@/components/apex.vue";
 
 export default {
 
     data: function () {
         return {
-          selectedArea: "soql"
+            selectedArea: "soql"
         }
     },
 
@@ -51,6 +53,7 @@ export default {
         "dropdown": dropdown,
         "menus": menus,
         "soql": soql,
+        "describe": describe,
         "apex": apex
     },
 

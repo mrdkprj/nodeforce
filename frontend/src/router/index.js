@@ -7,7 +7,6 @@ import Store from "@/store/index.js"
 Vue.use(Router)
 
 const router = new Router({
-    //mode: "history",
     routes: [
         {
             path: '/',
@@ -30,10 +29,8 @@ const router = new Router({
 
 router.beforeEach((to, from, next) => {
     if (to.matched.some(page => page.meta.isPublic) || Store.getters.isAuthenticated) {
-        console.log("next")
         next()
     } else {
-        console.log("next login")
         next('/login')
     }
 })

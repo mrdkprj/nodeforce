@@ -60,8 +60,8 @@ export default {
                     }
                 };
 
-                const res = await this.$store.dispatch("auth/request", params);
-                this.$refs.tab.setLog(res);
+                const result = await this.$store.dispatch("auth/request", params);
+                this.$refs.tab.setLog(result);
             }catch(ex){
                 this.$refs.message.displayError(ex.message);
             }

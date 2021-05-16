@@ -1,4 +1,81 @@
+const { request } = require('express');
 const xml2js = require('xml2js');
+
+module.exports = {
+
+    createLoginParameters: (request) => {
+
+        const common = commons(request);
+
+        const body = createLoginBody(request.body.username, request.body.password)
+
+        const host = request.body.sandbox ? "test.salesforce.com" : "login.salesforce.com";
+
+        common.serverUrl = `https://${host}/services/Soap/u/${common.version}`;
+
+        return {
+            body: body,
+            ...common,
+        }
+    },
+
+    createLogoutParameters: (request) => {
+        const common = commons(request);
+        return {
+            body: createLogoutBody(common.sessionId),
+            ...common,
+        }
+    },
+
+    createQueryParameters: (request) => {
+
+        const common = commons(request);
+        const soql = request.body.soql;
+        const tooling = request.body.tooling;
+
+        const body = createQueryBody(common.sessionId, soql, tooling);
+
+        if(tooling){
+            common.serverUrl = common.serverUrl.replace("Soap/u/", "Soap/T/");
+        }
+
+        return {
+            body: body,
+            soql: soql,
+            ...common,
+        }
+    },
+
+    createListSobjectParameters: (request) => {
+
+        const common = commons(request);
+        const body = createListSobjectBody(common.sessionId);
+        return {
+            body: body,
+            ...common,
+        }
+    },
+
+    createExecuteParameters: (request) => {
+
+        const common = commons(request);
+
+        const debuggingHeader = request.body.debuggingHeader;
+        const debugInfo = Object.keys(request.body.debuggingHeader).map(e => {return {"categories" : {"category": e, "level" : debuggingHeader[e]}}});
+        const builder = new xml2js.Builder({headless :true, rootName :"tns:DebuggingHeader",renderOpts:{'pretty': false}});
+
+        const body = createExecuteBody(common.sessionId, builder.buildObject(debugInfo), request.body.code)
+
+        common.serverUrl = common.serverUrl.replace("Soap/u/", "Soap/s/");
+
+        return {
+            body: body,
+            ...common,
+        }
+
+    }
+
+}
 
 const createLoginBody = (username, password) => {
     return [
@@ -53,7 +130,23 @@ const createQueryBody = (sessionId, soql, tooling) => {
         '</soap:Body>',
         '</soap:Envelope>'
     ].join('');
-}
+};
+
+const createListSobjectBody = (sessionId) => {
+    return [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">`,
+        '<soap:Header>',
+            '<soap:SessionHeader>',
+                '<soap:sessionId>' + sessionId + '</soap:sessionId>',
+            '</soap:SessionHeader>',
+        '</soap:Header>',
+        '<soap:Body>',
+            '<describeGlobal xmlns="urn:partner.soap.sforce.com"/>',
+        '</soap:Body>',
+        '</soap:Envelope>'
+    ].join('');
+};
 
 const createExecuteBody = (sessionId, debuggingHeader, code) => {
     return [
@@ -83,69 +176,3 @@ const commons = (request) => {
         language: request.header("locale-options") ? request.header("locale-options") : "ja",
     }
 };
-
-module.exports = {
-
-    createLoginParameters: (request) => {
-
-        const common = commons(request);
-
-        const body = createLoginBody(request.body.username, request.body.password)
-
-        const host = request.body.sandbox ? "test.salesforce.com" : "login.salesforce.com";
-
-        common.serverUrl = `https://${host}/services/Soap/u/${common.version}`;
-
-        return {
-            body: body,
-            ...common,
-        }
-    },
-
-    createLogoutParameters: (request) => {
-        const common = commons(request);
-        return {
-            body: createLogoutBody(common.sessionId),
-            ...common,
-        }
-    },
-
-    createQueryParameters: (request) => {
-
-        const common = commons(request);
-        const soql = request.body.soql;
-        const tooling = request.body.tooling;
-
-        const body = createQueryBody(common.sessionId, soql, tooling);
-
-        if(tooling){
-            common.serverUrl = common.serverUrl.replace("Soap/u/", "Soap/T/");
-        }
-
-        return {
-            body: body,
-            soql: soql,
-            ...common,
-        }
-    },
-
-    createExecuteParameters: (request) => {
-
-        const common = commons(request);
-
-        const debuggingHeader = request.body.debuggingHeader;
-        const debugInfo = Object.keys(request.body.debuggingHeader).map(e => {return {"categories" : {"category": e, "level" : debuggingHeader[e]}}});
-        const builder = new xml2js.Builder({headless :true, rootName :"tns:DebuggingHeader",renderOpts:{'pretty': false}});
-
-        const body = createExecuteBody(common.sessionId, builder.buildObject(debugInfo), request.body.code)
-
-        common.serverUrl = common.serverUrl.replace("Soap/u/", "Soap/s/");
-
-        return {
-            body: body,
-            ...common,
-        }
-
-    }
-
-}

@@ -8,7 +8,6 @@
             </div>
             <div>
                 <button type="button" id="executeSoqlBtn" class="btn btn-main" @click="onExecuteSoqlBtn">Execute</button>
-                <button type="button" id="test" class="btn btn-main" @click="showTest">Test</button>
                 <label class="soql-options"><input type="checkbox" id="useTooling" v-model="tooling"/> Use Tooling API</label>
             </div>
             <message ref="message"></message>
@@ -51,24 +50,6 @@ export default {
 
     methods: {
 
-        showTest: function(){
-            this.$refs.message.hideMessageArea();
-
-            this.$store.dispatch(
-                "auth/request",
-                {
-                    url: "/test",
-                    data:{}
-                }
-            ).then(res => this.displayQueryResult3(res))
-            .catch(e => this.$refs.message.displayError(e))
-        },
-
-        displayQueryResult3: function(json) {
-            const elementId = "soqlGrid0";
-            new GridTable(document.getElementById(elementId), json);
-        },
-
         onExecuteSoqlBtn: function(e){
             this.executeSoql();
         },
@@ -89,10 +70,10 @@ export default {
                     data:{soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.getActiveTabElementId()}
                 };
 
-                const res = await this.$store.dispatch("auth/request", params);
+                const result = await this.$store.dispatch("auth/request", params);
 
-                this.$refs.tab.setQueryResult(res);
-                this.$refs.history.addItem(res.soqlInfo.soql);
+                this.$refs.tab.setQueryResult(result);
+                this.$refs.history.addItem(result.soqlInfo.soql);
 
             }catch(ex){
                 this.$refs.message.displayError(ex);

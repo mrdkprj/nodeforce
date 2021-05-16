@@ -2,7 +2,7 @@ const parser = require("./query-result-parser.js");
 
 module.exports = {
 
-    getResponse: (request, queryResult) => {
+    parse: (request, queryResult) => {
 
         const parsedResult = parser.parse(request.body.soql, queryResult);
 

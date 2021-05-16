@@ -19,10 +19,6 @@ class QueryResultParser{
         const fields = parsedSOQL.rawQueryFields;
         const recordCount = queryResult.size;
 
-        if(!queryResult || !Object.keys(queryResult).includes(RECORDS)){
-            return this.format(records);
-        }
-
         const records = this.parseQueryReuslt(queryResult, parsedSOQL.queryFields);
 
         return {

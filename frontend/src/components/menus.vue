@@ -1,7 +1,7 @@
 <template>
     <ul id="menus">
         <li><a id="soql" class="menu-item" v-bind:class="{displayed: current == 'soql'}" @click="onMenuClick">SOQL</a></li>
-        <li><a id="describe" class="menu-item">Describe</a></li>
+        <li><a id="describe" class="menu-item" v-bind:class="{displayed: current == 'describe'}" @click="onMenuClick">Describe</a></li>
         <li><a id="apex" class="menu-item" v-bind:class="{displayed: current == 'apex'}" @click="onMenuClick">Apex</a></li>
     </ul>
 </template>

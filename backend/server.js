@@ -1,14 +1,9 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-//const cors = require('cors');
 const path = require('path');
 const client = require('./lib/client.js');
 
-const fs = require('fs');
-
-const app = express()
-app.use(bodyParser.json())
-//app.use(cors())
+const app = express();
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/main', (request, response) => {
@@ -34,13 +29,18 @@ app.delete('/logout', async (request, response) => {
 	}
 })
 
-app.post("/test", (request, response) => {
-	response.status(200).json(client.test());
-})
-
 app.post('/soql', async (request, response) => {
 	try{
 		const result = await client.query(request);
+		response.status(200).json(result)
+	}catch(ex){
+		response.status(400).json(ex.message)
+	}
+})
+
+app.post('/list', async (request, response) => {
+	try{
+		const result = await client.listSobject(request);
 		response.status(200).json(result)
 	}catch(ex){
 		response.status(400).json(ex.message)
