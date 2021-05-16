@@ -11,8 +11,7 @@ export default {
 </script>
 
 <style>
-    @import "./assets/css/gridtable.css";
-    @import "./assets/css/tab.css";
+    @import "./assets/css/lib.css";
 
     * {
         -webkit-box-sizing: border-box;

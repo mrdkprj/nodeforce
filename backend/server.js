@@ -1,8 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
+//const cors = require('cors');
 const path = require('path');
-const controller = require('./controller.js');
+const client = require('./lib/client.js');
 
 const fs = require('fs');
 
@@ -11,37 +11,49 @@ app.use(bodyParser.json())
 //app.use(cors())
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/main', (req, res) => {
-	res.render("index.html", {});
+app.get('/main', (request, response) => {
+	response.render("index.html", {});
 })
 
 // POST method route
-app.post('/login', async (req, res) => {
-
-	return await controller.authenticate(req)
-		.then(r => res.status(200).json(r))
-		.catch(e => res.status(400).json(e.message))
+app.post('/login', async (request, response) => {
+	try{
+		const result = await client.login(request);
+		response.status(200).json(result)
+	}catch(ex){
+		response.status(400).json(ex.message)
+	}
 })
 
-app.delete('/logout', (req, res) => {
-	console.log("logout")
-	res.json({username:"",token:""});
+app.delete('/logout', async (request, response) => {
+	try{
+		const result = await client.logout(request);
+		response.status(200).json(result)
+	}catch(ex){
+		response.status(400).json(ex.message)
+	}
 })
 
-app.post("/test", (req, res) => {
-	res.status(200).json(controller.test());
+app.post("/test", (request, response) => {
+	response.status(200).json(client.test());
 })
 
-app.post('/soql', async (req, res) => {
-	return await controller.query(req)
-		.then(r => res.status(200).json(r))
-		.catch(e => res.status(400).json(e.message))
+app.post('/soql', async (request, response) => {
+	try{
+		const result = await client.query(request);
+		response.status(200).json(result)
+	}catch(ex){
+		response.status(400).json(ex.message)
+	}
 })
 
-app.post('/apex', async (req, res) => {
-	return await controller.execute(req)
-		.then(r => res.status(200).json(r))
-		.catch(e => res.status(400).json(e.message))
+app.post('/apex', async (request, response) => {
+	try{
+		const result = await client.execute(request);
+		response.status(200).json(result)
+	}catch(ex){
+		response.status(400).json(ex.message)
+	}
 })
 
 console.log("port 8082")

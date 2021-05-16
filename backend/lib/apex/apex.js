@@ -11,8 +11,8 @@ class Apex{
 
         const result = apexResult.body.result;
 
-        if(result.success == false){
-            if(result.compiled){
+        if(result.success == "false"){
+            if(result.compiled == "true"){
                 throw new Error(result.exceptionStackTrace + "\n" + result.exceptionMessage);
             }
 

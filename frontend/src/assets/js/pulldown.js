@@ -1,6 +1,6 @@
 "use strict"
 
-class Pulldown{
+export default class Pulldown{
 
     constructor(){
 
@@ -238,5 +238,3 @@ class Pulldown{
 	}
 
 }
-
-export default Pulldown;

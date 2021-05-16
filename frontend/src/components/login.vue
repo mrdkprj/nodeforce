@@ -89,6 +89,7 @@ export default {
                 this.$router.push('/')
 
             }catch(ex){
+                console.log(ex.message)
                 this.message = ex.message;
             }
         },

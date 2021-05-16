@@ -48,7 +48,7 @@ class SoapClient {
 
     async query(soql){
         return await this.client.queryAsync({queryString: soql})
-            .then(results => results[0].result)
+            .then(results => {console.log(results); results[0].result})
             .catch(ex => {throw new Error(ex.root.Envelope.Body.Fault.faultstring);})
     }
 

@@ -7,9 +7,9 @@ const AGGREGATE = "EXPR"
 
 class QueryResultParser{
 
-    static parse(body, queryResult) {
+    static parse(soql, queryResult) {
 
-        return this.getParsedQueryResult(body.soql, queryResult);
+        return this.getParsedQueryResult(soql, queryResult);
 
     };
 

@@ -1,21 +1,17 @@
 const parser = require("./query-result-parser.js");
 
-class SOQL{
+module.exports = {
 
-    static createParams(body){
-        return body.soql.replace(/\r|\n|\r\n/gi, " ").replace(";", "");
-    }
+    getResponse: (request, queryResult) => {
 
-    static getResponse(body, queryResult){
-
-        const parsedResult = parser.parse(body, queryResult);
+        const parsedResult = parser.parse(request.body.soql, queryResult);
 
         return {
             columns:parsedResult.columns,
             rows:parsedResult.records,
             soqlInfo: {
-                soql: body.soql,
-                tabId: body.tabId,
+                soql: request.body.soql,
+                tabId: request.body.tabId,
                 timestamp: parsedResult.recordCount - 1 + " rows@" + new Date().toLocaleString('ja-JP')
             }
         }
@@ -23,5 +19,3 @@ class SOQL{
     }
 
 }
-
-module.exports = SOQL;
