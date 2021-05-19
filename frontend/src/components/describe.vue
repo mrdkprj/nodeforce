@@ -5,6 +5,15 @@
                 <div id="sobjectList"></div>
                 <div id="listSobjectBtn" class="refresh" @click="listSobjects"><div class="refresh-btn"></div></div>
             </div>
+            <div class="sobject-category">
+                <span>
+                    <label v-for="(value, name) in sobjectCategories" v-bind:value="value" v-bind:key="name">
+                        <input type="radio" name="category" :value="value" v-model="sobjectCategory" v-bind:disabled="!isReady" @change="changeList"/>{{name}}
+                    </label>
+                    <label><input type="checkbox" v-model="useObjectName" @change="changeList"/>Use sObject name</label>
+                </span>
+            </div>
+
             <div>
                 <button type="button" id="describeBtn" class="btn btn-main" @click="describeSobject">Describe</button>
             </div>
@@ -21,16 +30,30 @@ import tab from "@/components/describeTab.vue";
 
 export default {
 
-    data: function () {
-        return {
-            pulldown: new Pulldown(),
-
-        }
-    },
-
     components: {
         "message" : message,
         "desctab" : tab
+    },
+
+    data: function () {
+        return {
+            pulldown: new Pulldown(),
+            sobjectCategories: {
+                all: 0,
+                standard: 1,
+                custom: 2,
+            },
+            sobjectCategory: 0,
+            useObjectName: true,
+            sObjects: {},
+        }
+    },
+
+    computed: {
+        isReady: function () {
+            return Object.keys(this.sObjects).length > 0;
+        },
+
     },
 
     mounted(){
@@ -44,12 +67,30 @@ export default {
 
             try{
                 const result = await this.$store.dispatch("auth/request", {url: "/list"});
-                const list = result.list.map((e) => `${e.name}(${e.label})`);
-                this.pulldown.create(list);
+                this.sObjects = result.list;
+                this.createOptions();
             }catch(ex){
                 this.$refs.message.displayError(ex);
             }
 
+        },
+
+        changeList: function(e){
+            this.createOptions();
+        },
+
+        createOptions: function(){
+            let list;
+
+            if(this.sobjectCategory == 0){
+                list = this.sObjects.map(e => this.useObjectName ? e.name : e.label);
+            }else if(this.sobjectCategory == 1){
+                list = this.sObjects.filter(e => e.custom == "false").map(e => this.useObjectName ? e.name : e.label);
+            }else if(this.sobjectCategory == 2){
+                list = this.sObjects.filter(e => e.custom == "true").map(e => this.useObjectName ? e.name : e.label);
+            }
+
+            this.pulldown.create(list);
         },
 
         describeSobject: async function(e) {
@@ -93,5 +134,9 @@ export default {
     #sobjectList{
         min-width: 100px;
         margin-right: 20px;
+    }
+
+    .sobject-category{
+        margin-bottom:10px;
     }
 </style>
