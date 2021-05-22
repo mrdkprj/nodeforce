@@ -56,6 +56,16 @@ module.exports = {
         }
     },
 
+    createDescribeParameters: (request) => {
+
+        const common = commons(request);
+        const body = createDescribeBody(common.sessionId, request.body.sobject);
+        return {
+            body: body,
+            ...common,
+        }
+    },
+
     createExecuteParameters: (request) => {
 
         const common = commons(request);
@@ -98,7 +108,7 @@ const createLogoutBody = (sessionId) => {
         `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">`,
         '<soap:Header>',
             '<soap:SessionHeader>',
-                '<soap:sessionId>' + sessionId + '</soap:sessionId>',
+                `<soap:sessionId>${sessionId}</soap:sessionId>`,
             '</soap:SessionHeader>',
         '</soap:Header>',
         '<soap:Body>',
@@ -119,13 +129,13 @@ const createQueryBody = (sessionId, soql, tooling) => {
         `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="${tns}">`,
         '<soap:Header>',
             '<tns:SessionHeader>',
-                '<tns:sessionId>' + sessionId + '</tns:sessionId>',
+                `<tns:sessionId>${sessionId}</tns:sessionId>`,
             '</tns:SessionHeader>',
             '<tns:QueryOptions><tns:batchSize>1</tns:batchSize></tns:QueryOptions>',
         '</soap:Header>',
         '<soap:Body>',
             `<query xmlns="${tns}">`,
-            '<queryString>' + query + '</queryString>',
+                `<queryString>${query}</queryString>`,
             '</query>',
         '</soap:Body>',
         '</soap:Envelope>'
@@ -138,11 +148,30 @@ const createListSobjectBody = (sessionId) => {
         `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">`,
         '<soap:Header>',
             '<soap:SessionHeader>',
-                '<soap:sessionId>' + sessionId + '</soap:sessionId>',
+                `<soap:sessionId>${sessionId}</soap:sessionId>`,
             '</soap:SessionHeader>',
         '</soap:Header>',
         '<soap:Body>',
             '<describeGlobal xmlns="urn:partner.soap.sforce.com"/>',
+        '</soap:Body>',
+        '</soap:Envelope>'
+    ].join('');
+};
+
+const createDescribeBody = (sessionId, name) => {
+
+    return [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="urn:partner.soap.sforce.com">',
+        '<soap:Header>',
+            '<tns:SessionHeader>',
+                `<tns:sessionId>${sessionId}</tns:sessionId>`,
+            '</tns:SessionHeader>',
+        '</soap:Header>',
+        '<soap:Body>',
+            '<describeSObjects xmlns="urn:partner.soap.sforce.com">',
+                `<sObjectType>${name}</sObjectType>`,
+            '</describeSObjects>',
         '</soap:Body>',
         '</soap:Envelope>'
     ].join('');
@@ -154,13 +183,13 @@ const createExecuteBody = (sessionId, debuggingHeader, code) => {
         '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xmlns:tns="http://soap.sforce.com/2006/08/apex">',
         '<soap:Header>',
             '<tns:SessionHeader>',
-                '<tns:sessionId>' + sessionId + '</tns:sessionId>',
+                `<tns:sessionId>${sessionId}</tns:sessionId>`,
             '</tns:SessionHeader>',
             debuggingHeader,
         '</soap:Header>',
         '<soap:Body>',
             '<executeAnonymous xmlns="http://soap.sforce.com/2006/08/apex">',
-            '<string>' + code + '</string>',
+                `<string>${code}</string>`,
             '</executeAnonymous>',
         '</soap:Body>',
         '</soap:Envelope>'

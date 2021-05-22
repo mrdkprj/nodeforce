@@ -47,6 +47,15 @@ app.post('/list', async (request, response) => {
 	}
 })
 
+app.post('/describe', async (request, response) => {
+	try{
+		const result = await client.describe(request);
+		response.status(200).json(result)
+	}catch(ex){
+		response.status(400).json(ex.message)
+	}
+})
+
 app.post('/apex', async (request, response) => {
 	try{
 		const result = await client.execute(request);

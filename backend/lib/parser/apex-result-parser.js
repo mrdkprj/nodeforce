@@ -3,7 +3,7 @@ const LOG_HEADER = ["Timestamp", "Event", "Details"];
 
 module.exports = {
 
-    parse: (req, apexResult) =>{
+    parse: (request, apexResult) =>{
 
         const result = apexResult.body.result;
 
@@ -25,7 +25,7 @@ module.exports = {
                 logName: "executeAnonymous@" + new Date().toLocaleString('ja-JP'),
                 header: LOG_HEADER,
                 rows: logs,
-                tabId: req.tabId,
+                tabId: request.tabId,
             };
     }
 }

@@ -80,6 +80,9 @@ export default {
         },
 
         createOptions: function(){
+
+            if(!this.isReady) return;
+
             let list;
 
             if(this.sobjectCategory == 0){
@@ -95,9 +98,9 @@ export default {
 
         describeSobject: async function(e) {
 
-            let inputSoql = soql ? soql : this.inputSoql;
+            const sobject = this.pulldown.value;
 
-            if(!inputSoql){
+            if(!sobject){
                 return;
             }
 
@@ -105,14 +108,13 @@ export default {
 
             try{
                 const params = {
-                    url: "/soql",
-                    data:{soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.getActiveTabElementId()}
+                    url: "/describe",
+                    data:{sobject: sobject, tabId: this.$refs.tab.getActiveTabElementId()}
                 };
 
                 const res = await this.$store.dispatch("auth/request", params);
 
-                this.$refs.tab.setQueryResult(res);
-                this.$refs.history.addItem(res.soqlInfo.soql);
+                this.$refs.tab.update(res);
 
             }catch(ex){
                 this.$refs.message.displayError(ex);

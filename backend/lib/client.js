@@ -3,8 +3,8 @@ const xml2js = require('xml2js');
 const parseOptions = {ignoreAttrs : true,explicitArray :false, tagNameProcessors: [xml2js.processors.stripPrefix]}
 const api  = require( "./helper.js");
 const soql = require("./soql/soql.js");
-const apex = require("./apex/apex.js");
-const { request } = require('express');
+const apex = require("./parser/apex-result-parser.js");
+const describe = require("./parser/describe-result-parser.js");
 const headers = {
     "Content-Type": "text/xml",
     "SOAPAction": '""'
@@ -68,6 +68,13 @@ module.exports = {
             const params = api.createListSobjectParameters(request);
             const response = await call(createCallOptions(params));
             return {list: response.Body.describeGlobalResponse.result.sobjects};
+        },
+
+        describe: async (request) => {
+            const params = api.createDescribeParameters(request);
+            const response = await call(createCallOptions(params));
+            const result = response.Body.describeSObjectsResponse.result;
+            return describe.parse(request.body, result);
         },
 
         execute: async (request) => {

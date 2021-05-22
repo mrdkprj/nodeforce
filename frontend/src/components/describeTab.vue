@@ -6,15 +6,12 @@
 
 <script>
 
-const EVENT_COLUMN_INDEX = 1;
-const USER_DEBUG = "USER_DEBUG";
-
 export default {
 
     data: function () {
         return {
             tabComponent: new Tab(),
-            logs: {}
+            results: {}
         }
     },
 
@@ -24,7 +21,30 @@ export default {
             return this.tabComponent.activeTabIndex;
         },
 
-        createTab: function(newTab){
+        update(result){
+            const elementId = "describeGrid" + result.tabId;
+
+            this.writeSobjectInfo(result);
+
+            const grid = new GridTable(document.getElementById(elementId), result);
+            this.$set(this.results, result.tabId, {name: result.name, grid:grid});
+        },
+
+        writeSobjectInfo(result){
+            const sobjectInfoArea = document.getElementById("sobjectInfo" + result.tabId);
+
+            sobjectInfoArea.innerHTML = "";
+            const name = document.createElement("div");
+            name.textContent = "Name: " + result.name;
+            const label = document.createElement("div");
+            label.textContent = "Label: " + result.label;
+            const prefix = document.createElement("div");
+            prefix.textContent = "Prefix: " + result.prefix;
+
+            sobjectInfoArea.append(name, label, prefix);
+        },
+
+        createTab(newTab){
 
             const newTabId = newTab.tabIndex;
 
@@ -35,7 +55,7 @@ export default {
             parent.setAttribute("tabId", newTabId)
 
             const resultDiv = document.createElement("div");
-            resultDiv.id = "logInfo" + newTabId;
+            resultDiv.id = "sobjectInfo" + newTabId;
             resultDiv.classList.add("result-info");
             resultDiv.setAttribute("tabId", newTabId);
 
@@ -48,71 +68,14 @@ export default {
             parent.appendChild(gridDiv)
 
             newTab.content.appendChild(parent);
-
-        },
-
-        setLog: function(log){
-
-            const elementId = "describeGrid" + log.tabId;
-
-            this.writeLogInfo(log.tabId, log.logName);
-
-            const grid = new GridTable(document.getElementById(elementId), {rows: log.rows, header:log.header});
-
-            this.$set(this.logs, log.tabId, {name: log.logName, grid: grid});
-
-        },
-
-        writeLogInfo: function(tabId, logName){
-            console.log(tabId)
-            const infoArea = document.getElementById("logInfo" + tabId);
-            infoArea.innerHTML = "";
-
-            const log = document.createElement("span");
-            log.textContent = logName;
-            log.style["margin-right"] = "10px";
-            const debugOnly = document.createElement("label");
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.classList.add("debug-only");
-            checkbox.addEventListener("change", this.onDebugOnly);
-            debugOnly.append(checkbox,"Debug only");
-
-            infoArea.appendChild(log);
-            infoArea.appendChild(debugOnly);
-
-        },
-
-        onDebugOnly: function(e){
-            if (e.target.checked == true) {
-                this.filterLog();
-            } else {
-                this.clearFilter();
-            }
-        },
-
-        filterLog: function(){
-            const elementId = this.getActiveTabElementId();
-            const grid = this.logs[elementId].grid;
-            if(grid){
-                grid.filter(EVENT_COLUMN_INDEX,USER_DEBUG);
-            }
-        },
-
-        clearFilter: function(){
-            const elementId = this.getActiveTabElementId();
-            const grid = this.logs[elementId].grid;
-            if(grid){
-                grid.clearFilter();
-            }
         },
 
         exportCsv: function(){
             const elementId = this.getActiveTabElementId();
-            const grid = this.logs[elementId].grid;
+            const grid = this.results[elementId].grid;
             if(grid){
                 grid.export({
-                    fileName: this.logs[elementId].name,
+                    fileName: this.results[elementId].name,
                     bom: true
                 });
             }
