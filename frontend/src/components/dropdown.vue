@@ -44,7 +44,6 @@ export default {
         logout: async function(){
             await this.$store.dispatch('auth/destroy');
             this.$router.push('/login')
-            console.log("destroy")
         },
 
         onDropdownClick: function(e){

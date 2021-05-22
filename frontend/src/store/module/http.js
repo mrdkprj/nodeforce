@@ -36,8 +36,6 @@ export default {
                 timeout: 15000
             }
 
-            console.log("ax")
-
             try{
                 commit("start");
                 return await axios(options);

@@ -64,7 +64,6 @@ export default {
         },
 
         writeLogInfo: function(tabId, logName){
-            console.log(tabId)
             const infoArea = document.getElementById("logInfo" + tabId);
             infoArea.innerHTML = "";
 

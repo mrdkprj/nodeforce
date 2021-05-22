@@ -84,12 +84,9 @@ export default {
 
                 await this.$store.dispatch("auth/create",params);
 
-                console.log("login ok")
-
                 this.$router.push('/')
 
             }catch(ex){
-                console.log(ex.message)
                 this.message = ex.message;
             }
         },

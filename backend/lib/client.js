@@ -2,7 +2,7 @@ const axios =  require('axios');
 const xml2js = require('xml2js');
 const parseOptions = {ignoreAttrs : true,explicitArray :false, tagNameProcessors: [xml2js.processors.stripPrefix]}
 const api  = require( "./helper.js");
-const soql = require("./soql/soql.js");
+const soql = require("./parser/query-result-parser.js");
 const apex = require("./parser/apex-result-parser.js");
 const describe = require("./parser/describe-result-parser.js");
 const headers = {
@@ -60,7 +60,7 @@ module.exports = {
 
             const response = await call(createCallOptions(params));
             const result = response.Body.queryResponse.result;
-            return soql.parse(request, result);
+            return soql.parse(request.body, result);
         },
 
         listSobject: async (request) => {
