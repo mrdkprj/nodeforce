@@ -3,23 +3,17 @@ export default {
     namespaced: true,
 
     state: {
-        token: "",
         username: "",
-        serverUrl: "",
     },
 
     mutations: {
 
         create (state, data) {
-            state.token = data.token;
             state.username = data.username;
-            state.serverUrl = data.serverUrl;
         },
 
         destroy (state) {
-            state.token = "";
             state.username = "";
-            state.serverUrl = "";
         },
 
     },

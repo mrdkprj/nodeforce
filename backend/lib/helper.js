@@ -1,4 +1,3 @@
-const { request } = require('express');
 const xml2js = require('xml2js');
 
 module.exports = {
@@ -200,8 +199,8 @@ const createExecuteBody = (sessionId, debuggingHeader, code) => {
 const commons = (request) => {
     return {
         version: request.apiversion ? request.apiversion : "43.0",
-        sessionId: request.header("Authorization"),
-        serverUrl: request.header("Server-Url"),
+        sessionId: request.session.token,
+        serverUrl: request.session.serverUrl,
         language: request.header("locale-options") ? request.header("locale-options") : "ja",
     }
 };

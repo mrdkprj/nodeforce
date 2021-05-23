@@ -23,17 +23,14 @@ export default {
         async request ({ commit, rootState }, { method, url, data }) {
             const headers = {}
             headers['Content-Type'] = 'application/json'
-            if (rootState.auth.token) {
-                headers['Authorization'] = rootState.auth.token
-                headers["Server-Url"] = rootState.auth.serverUrl
-            }
 
             const options = {
                 method,
                 url,
                 headers,
                 data,
-                timeout: 15000
+                timeout: 15000,
+                withCredentials: true,
             }
 
             try{
