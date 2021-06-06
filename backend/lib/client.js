@@ -26,8 +26,7 @@ async function call({url, method = "post", data}){
         return result.Envelope;
     }catch(ex){
         const response = await xml2js.parseStringPromise(ex.response.data, parseOptions);
-        const message = response.Envelope.Body.Fault.faultstring;
-        throw new Error(message);
+        throw new Error(response.Envelope.Body.Fault.faultstring);
     }
 }
 
@@ -43,7 +42,7 @@ module.exports = {
 
             const response = await call(createCallOptions(params));
             const result = response.Body.loginResponse.result;
-            return {username:result.userInfo.userName, token:result.sessionId, serverUrl:result.serverUrl, sessionSeconds: parseInt(result.userInfo.sessionSecondsValid)};
+            return {username:result.userInfo.userName, token:result.sessionId, serverUrl:result.serverUrl, sessionSeconds:result.userInfo.sessionSecondsValid};
 
         },
 

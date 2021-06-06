@@ -63,36 +63,29 @@ export default {
 
     methods: {
 
-        //------------------------------------------------
-        // Shortcut keys
-        //------------------------------------------------
         onkeydown: function(e) {
 
-        if (e.ctrlKey && (e.key === "r" || e.keyCode === 13)) {
-            e.preventDefault();
-
-            if (e.target.id === "inputSoql"){
-                this.$refs.soql.executeSoql();
-            }
-
-            if(e.target.id === "apexCode") {
-                this.$refs.apex.onExecuteClick(e);
-            }
-        }
-
-        // tab
-        if (e.keyCode === 9) {
-            if (e.target.id === "inputSoql" || e.target.id === "apexCode") {
+            if (e.ctrlKey && (e.key === "r" || e.key === "Enter")) {
                 e.preventDefault();
-                this.insertTab(e);
+
+                if (e.target.id === "inputSoql"){
+                    this.$refs.soql.executeSoql();
+                }
+
+                if(e.target.id === "apexCode") {
+                    this.$refs.apex.onExecuteClick(e);
+                }
             }
-        }
+
+            if (e.key === "Tab") {
+                if (e.target.id === "inputSoql" || e.target.id === "apexCode") {
+                    e.preventDefault();
+                    this.insertTab(e);
+                }
+            }
 
         },
 
-        //------------------------------------------------
-        // Insert Tab
-        //------------------------------------------------
         insertTab: function(e) {
             const elem = e.target;
             const start = elem.selectionStart;

@@ -30,14 +30,13 @@ export default {
                 headers,
                 data,
                 timeout: 15000,
-                withCredentials: true,
             }
 
             try{
                 commit("start");
                 return await axios(options);
-            }catch(e){
-                throw new Error(e.response.data);
+            }catch(ex){
+                throw new Error(ex.response.data)
             }finally{
                 commit("end");
             }

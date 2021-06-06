@@ -12,12 +12,12 @@ export default new Vuex.Store({
         http:http
     },
     getters: {
-        isAuthenticated: state => !!state.auth.username,
+        isAuthenticated: state => !!state.auth.username && state.auth.limit > new Date(),
         inProgress: state => state.http.inprogress,
         currentUser: state => state.auth.username,
     },
     plugins: [createPersistedState({
-        key: "sf.node.app",     // プロジェクト単位の一意の識別子
-        storage: window.sessionStorage,
+        key: "sf.node.app",
+        storage: localStorage,
     })]
 })

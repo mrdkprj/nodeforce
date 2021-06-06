@@ -84,19 +84,19 @@ export default {
 
                 await this.$store.dispatch("auth/create",params);
 
-                this.$router.push('/')
+                this.$router.push("/")
 
             }catch(ex){
                 this.message = ex.message;
             }
         },
-
+/*
         created: function () {
             if (this.$store.getters.isAuthenticated) {
                 this.$router.push("/")
             }
         },
-
+*/
     }
 }
 </script>

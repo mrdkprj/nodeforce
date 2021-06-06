@@ -64,12 +64,12 @@ export default {
 
             this.$refs.message.hideMessageArea();
 
-            try{
-                const params = {
-                    url: "/soql",
-                    data:{soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.getActiveTabElementId()}
-                };
+            const params = {
+                url: "/soql",
+                data:{soql: inputSoql, tooling: this.tooling, tabId: this.$refs.tab.getActiveTabElementId()}
+            };
 
+            try{
                 const result = await this.$store.dispatch("auth/request", params);
 
                 this.$refs.tab.setQueryResult(result);

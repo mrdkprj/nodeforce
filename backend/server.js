@@ -2,15 +2,14 @@ const express = require('express');
 const redis = require('redis')
 const session = require('express-session')
 const RedisStore = require('connect-redis')(session)
-const redisClient = redis.createClient();
 const path = require('path');
 const client = require('./lib/client.js');
-const cors = require('cors')
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(cors({credentials: true, origin: true}));
+
+const redisClient = redis.createClient();
 
 app.use(
 	session({
@@ -28,6 +27,11 @@ app.use(
 	})
 )
 
+const normalResposne = ({request, response, result}) => {
+	response.append("limit", request.session.cookie.expires)
+	response.status(200).json(result)
+}
+
 app.get('/main', (request, response) => {
 	response.render("index.html", {});
 })
@@ -38,13 +42,17 @@ app.post('/login', async (request, response) => {
 
 		const result = await client.login(request);
 
-		const msec = result.sessionSeconds * 100;
-		request.session.cookie.expires = new Date(Date.now() + msec)
-		request.session.cookie.maxAge = msec;
-		request.session.token = result.token;
-		request.session.serverUrl = result.serverUrl;
+		request.session.regenerate(function(err) {
+			const msec = result.sessionSeconds * 100;
+			request.session.cookie.expires = new Date(Date.now() + msec)
+			request.session.cookie.maxAge = msec;
+			request.session.token = result.token;
+			request.session.serverUrl = result.serverUrl;
+			request.session.username = result.username;
 
-		response.status(200).json(result);
+			response.append("username", result.username)
+			return normalResposne({request, response});
+		})
 
 	}catch(ex){
 		response.status(400).json(ex.message)
@@ -53,19 +61,26 @@ app.post('/login', async (request, response) => {
 
 app.delete('/logout', async (request, response) => {
 	try{
-		const result = await client.logout(request);
-		response.status(200).json(result)
+		await client.logout(request);
 	}catch(ex){
-		response.status(400).json(ex.message);
+
 	}finally{
+		response.status(200).json({status:"done"});
 		request.session.destroy();
 	}
 })
 
+app.all('*', async (request, response, next) => {
+
+	if(request.session.token) return next();
+
+	response.status(400).json("Session expired. Try login after logout.") ;
+});
+
 app.post('/soql', async (request, response) => {
 	try{
 		const result = await client.query(request);
-		response.status(200).json(result)
+		return normalResposne({request, response, result})
 	}catch(ex){
 		response.status(400).json(ex.message)
 	}
@@ -74,7 +89,7 @@ app.post('/soql', async (request, response) => {
 app.post('/list', async (request, response) => {
 	try{
 		const result = await client.listSobject(request);
-		response.status(200).json(result)
+		return normalResposne({request, response, result})
 	}catch(ex){
 		response.status(400).json(ex.message)
 	}
@@ -83,7 +98,7 @@ app.post('/list', async (request, response) => {
 app.post('/describe', async (request, response) => {
 	try{
 		const result = await client.describe(request);
-		response.status(200).json(result)
+		return normalResposne({request, response, result})
 	}catch(ex){
 		response.status(400).json(ex.message)
 	}
@@ -92,7 +107,7 @@ app.post('/describe', async (request, response) => {
 app.post('/apex', async (request, response) => {
 	try{
 		const result = await client.execute(request);
-		response.status(200).json(result)
+		return normalResposne({request, response, result})
 	}catch(ex){
 		response.status(400).json(ex.message)
 	}
