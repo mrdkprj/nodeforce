@@ -201,9 +201,9 @@ export default {
     input[type=text],
     input[type=password]{
         border: 1px solid #888;
-        line-height: 35px;
+        line-height: 45px;
         font-size: 14px;
-        height: 35px;
+        height: 45px;
         border-radius: 4px;
         text-indent: 5px;
         width:100%;
@@ -213,7 +213,7 @@ export default {
         width: 100%;
         border-radius: 4px;
         display: flex;
-        height: 35px;
+        height: 40px;
     }
 
     .radio{
@@ -241,10 +241,10 @@ export default {
 
     label{
         width: 100%;
-        height: 35px;
+        height: 40px;
         vertical-align: middle;
         text-align: center;
-        line-height: 35px;
+        line-height: 40px;
         color:#424141;
         cursor:pointer;
     }
