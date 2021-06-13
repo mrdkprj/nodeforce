@@ -78,8 +78,6 @@ const parseQueryReuslt = (queryResult, queryFields) => {
             }
         })
 
-
-
         records.push(record);
 
     })

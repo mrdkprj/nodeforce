@@ -1,13 +1,13 @@
 <template>
-    <div id="soqlArea" v-bind:class="displayPosition">
-        <soqlhistory ref="history" header="SOQL History" :container="selector" @navChanged="onHistoryStatusChanged" @navItemDblclicked="onHistoryItemSelected"></soqlhistory>
+    <div id="soqlArea" :class="adjustMargin">
+        <soqlhistory ref="history" header="SOQL History" container="soql" @historyToggled="onHistoryToggled" @itemDblClicked="onHistoryItemSelected"></soqlhistory>
 
         <div class="form-area soql-form">
             <div>
                 <textarea id="inputSoql" class="code-input" spellcheck="false" cols="120" rows="5" v-model="inputSoql"></textarea>
             </div>
             <div>
-                <button type="button" id="executeSoqlBtn" class="btn btn-main" @click="onExecuteSoqlBtn">Execute</button>
+                <button type="button" id="executeSoqlBtn" class="btn btn-main" @click="onExecuteSoqlBtnClick">Execute</button>
                 <label class="soql-options"><input type="checkbox" id="useTooling" v-model="tooling"/> Use Tooling API</label>
             </div>
             <message ref="message"></message>
@@ -19,8 +19,8 @@
 
 <script>
 import message from "@/components/message.vue";
-import history from "@/components/history.vue";
-import tab from "@/components/soqlTab.vue";
+import history from "@/components/soql-history.vue";
+import tab from "@/components/soql-tab.vue";
 
 export default {
 
@@ -28,7 +28,7 @@ export default {
         return {
             tooling: false,
             inputSoql: "select firstname,Name,Id,account.name from contact where id in ('0036F00003Vhe7y','0036F00003WqLC4')",
-            sidenavOpened: false
+            historyOpened: false
         }
     },
 
@@ -39,18 +39,18 @@ export default {
     },
 
     computed: {
-        displayPosition: function(){
-            if(this.sidenavOpened){
-                return "with-sidenav";
+        adjustMargin: function(){
+            if(this.historyOpened){
+                return "with-history";
             }else{
-                return "without-sidenav";
+                return "without-history";
             }
         }
     },
 
     methods: {
 
-        onExecuteSoqlBtn: function(e){
+        onExecuteSoqlBtnClick: function(e){
             this.executeSoql();
         },
 
@@ -84,12 +84,12 @@ export default {
             this.$refs.history.toggle();
         },
 
-        onHistoryStatusChanged: function(opened){
-            this.sidenavOpened = opened;
+        onHistoryToggled: function(opened){
+            this.historyOpened = opened;
         },
 
         onHistoryItemSelected: function(target, value){
-            if(target == this.selector){
+            if(target == "soql"){
                 document.getElementById("inputSoql").value = value;
             }
         }
@@ -127,11 +127,11 @@ export default {
         margin-right: 5px;
     }
 
-    .with-sidenav{
+    .with-history{
         margin-left: 150px;
     }
 
-    .without-sidenav{
+    .without-history{
         margin-left: 0;
     }
 </style>

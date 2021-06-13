@@ -26,7 +26,7 @@
 
 <script>
 import message from "@/components/message.vue";
-import tab from "@/components/describeTab.vue";
+import tab from "@/components/describe-tab.vue";
 
 export default {
 
@@ -39,9 +39,9 @@ export default {
         return {
             pulldown: new Pulldown(),
             sobjectCategories: {
-                all: 0,
-                standard: 1,
-                custom: 2,
+                All: 0,
+                Standard: 1,
+                Custom: 2,
             },
             sobjectCategory: 0,
             useObjectName: true,
@@ -64,6 +64,8 @@ export default {
     methods: {
 
         listSobjects: async function(e){
+
+            if(this.isReady && !confirm("Refresh sObject list?")) return;
 
             try{
                 const result = await this.$store.dispatch("auth/request", {url: "/list"});
@@ -98,24 +100,26 @@ export default {
 
         describeSobject: async function(e) {
 
-            const sobject = this.pulldown.value;
+            let sobject = this.pulldown.value;
 
             if(!sobject){
                 return;
             }
 
+            if(this.useObjectName == false){
+                //sobject =
+            }
+
             this.$refs.message.hideMessageArea();
 
+            const params = {
+                url: "/describe",
+                data:{sobject: sobject, tabId: this.$refs.tab.getActiveTabElementId()}
+            };
+
             try{
-                const params = {
-                    url: "/describe",
-                    data:{sobject: sobject, tabId: this.$refs.tab.getActiveTabElementId()}
-                };
-
                 const res = await this.$store.dispatch("auth/request", params);
-
                 this.$refs.tab.update(res);
-
             }catch(ex){
                 this.$refs.message.displayError(ex);
             }

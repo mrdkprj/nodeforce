@@ -1,7 +1,7 @@
 const axios =  require('axios');
 const xml2js = require('xml2js');
 const parseOptions = {ignoreAttrs : true,explicitArray :false, tagNameProcessors: [xml2js.processors.stripPrefix]}
-const api  = require( "./helper.js");
+const helper  = require( "./helper.js");
 const soql = require("./parser/query-result-parser.js");
 const apex = require("./parser/apex-result-parser.js");
 const describe = require("./parser/describe-result-parser.js");
@@ -26,6 +26,11 @@ async function call({url, method = "post", data}){
         return result.Envelope;
     }catch(ex){
         const response = await xml2js.parseStringPromise(ex.response.data, parseOptions);
+        const code = response.Envelope.Body.Fault.faultcode;
+        if(!code || !code.startsWith("sf:")){
+            throw new Error("Unknown error occurred.")
+        }
+
         throw new Error(response.Envelope.Body.Fault.faultstring);
     }
 }
@@ -38,7 +43,7 @@ module.exports = {
 
         login: async (request) => {
 
-            const params = api.createLoginParameters(request);
+            const params = helper.createLoginParameters(request);
 
             const response = await call(createCallOptions(params));
             const result = response.Body.loginResponse.result;
@@ -48,14 +53,14 @@ module.exports = {
 
         logout: async (request) => {
 
-            const params = api.createLogoutParameters(request);
+            const params = helper.createLogoutParameters(request);
 
             return await call(createCallOptions(params));
         },
 
         query: async (request) => {
 
-            const params = api.createQueryParameters(request);
+            const params = helper.createQueryParameters(request);
 
             const response = await call(createCallOptions(params));
             const result = response.Body.queryResponse.result;
@@ -64,13 +69,13 @@ module.exports = {
 
         listSobject: async (request) => {
 
-            const params = api.createListSobjectParameters(request);
+            const params = helper.createListSobjectParameters(request);
             const response = await call(createCallOptions(params));
             return {list: response.Body.describeGlobalResponse.result.sobjects};
         },
 
         describe: async (request) => {
-            const params = api.createDescribeParameters(request);
+            const params = helper.createDescribeParameters(request);
             const response = await call(createCallOptions(params));
             const result = response.Body.describeSObjectsResponse.result;
             return describe.parse(request.body, result);
@@ -78,7 +83,7 @@ module.exports = {
 
         execute: async (request) => {
 
-            const params = api.createExecuteParameters(request);
+            const params = helper.createExecuteParameters(request);
 
             const response = await call(createCallOptions(params));
             const result = {header: response.Header, body:response.Body.executeAnonymousResponse}

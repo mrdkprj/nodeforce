@@ -49,21 +49,6 @@ export default {
     }
 
     /* ------------------------------
-    Table
-    ------------------------------ */
-    .tbl{
-        display: table;
-    }
-
-    .row{
-        display: table-row;
-    }
-
-    .row > div{
-        display: table-cell;
-    }
-
-    /* ------------------------------
     Areas
     ------------------------------ */
     .form-area{

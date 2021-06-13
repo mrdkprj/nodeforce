@@ -31,7 +31,6 @@ router.beforeEach( async (to, from, next) => {
     if (to.matched.some(page => page.meta.isPublic) || Store.getters.isAuthenticated) {
         next()
     } else {
-
         await Store.dispatch("auth/destroy");
         next('/login')
     }

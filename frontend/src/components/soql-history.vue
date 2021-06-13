@@ -1,8 +1,8 @@
 <template>
-    <div id="history" class="sidenav" :class="navstatus">
-        <div class="tbl soql-history-title noselect">
-            <div class="row"><button class="closebtn noselect" @click="onCloseHistoryClick">&times;</button></div>
-            <div class="row">{{header}}</div>
+    <div id="history" class="sidenav" :class="status">
+        <div class="soql-history-title">
+            <div>{{header}}</div>
+            <button class="closebtn" @click="onCloseHistoryClick">&times;</button>
         </div>
         <div class="soql-list">
             <ul>
@@ -26,7 +26,7 @@ export default {
     },
 
     computed: {
-        navstatus: function () {
+        status: function () {
             if(this.opened){
                 return "sidenav-open";
             }else{
@@ -51,17 +51,17 @@ export default {
         },
 
         onHistoryDblClick: function(e) {
-            this.$emit("navItemDblclicked", this.container, e.target.innerHTML)
+            this.$emit("itemDblClicked", this.container, e.target.textContent)
         },
 
         openHistory: function(){
             this.opened = true;
-            this.$emit("navChanged", this.opened, this.container)
+            this.$emit("historyToggled", this.opened, this.container)
         },
 
         closeHistory: function(){
             this.opened = false;
-            this.$emit("navChanged", this.opened, this.container)
+            this.$emit("historyToggled", this.opened, this.container)
         },
 
         addItem: function(item){
@@ -105,9 +105,6 @@ export default {
         text-overflow: ellipsis;
         white-space: nowrap;
         cursor: pointer;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
         user-select: none;
     }
 
@@ -120,9 +117,7 @@ export default {
     }
 
     .sidenav .closebtn {
-        position: absolute;
-        top: 5px;
-        right: 10px;
+        margin-right: 5px;
         font-size: 30px;
         color: #000;
         background-color: transparent;
@@ -137,6 +132,9 @@ export default {
     }
 
     .sidenav .soql-history-title{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         font-size: 14px;
         color: #000;
         border-bottom: 1px solid #ccc;
@@ -165,7 +163,6 @@ export default {
         width: 0px;
         visibility: hidden;
         opacity: 0;
-        transition: visibility 0s, opacity 0s step-start;
     }
 
     .sidenav-open {

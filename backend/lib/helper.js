@@ -70,7 +70,7 @@ module.exports = {
         const common = commons(request);
 
         const debuggingHeader = request.body.debuggingHeader;
-        const debugInfo = Object.keys(request.body.debuggingHeader).map(e => {return {"categories" : {"category": e, "level" : debuggingHeader[e]}}});
+        const debugInfo = Object.keys(request.body.debuggingHeader).map(e => {return {"categories" : {"category": escape(e), "level" : escape(debuggingHeader[e])}}});
         const builder = new xml2js.Builder({headless :true, rootName :"tns:DebuggingHeader",renderOpts:{'pretty': false}});
 
         const body = createExecuteBody(common.sessionId, builder.buildObject(debugInfo), request.body.code)
@@ -86,6 +86,22 @@ module.exports = {
 
 }
 
+const escape = (string) => {
+    if(typeof string !== 'string') {
+          return string;
+    }
+
+    return string.replace(/[&'`"<>]/g, function(match) {
+        return {
+            '&': '&amp;',
+            "'": '&#x27;',
+            '`': '&#x60;',
+            '"': '&quot;',
+            '<': '&lt;',
+            '>': '&gt;',
+        }[match]
+    });
+}
 const createLoginBody = (username, password) => {
     return [
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -93,8 +109,8 @@ const createLoginBody = (username, password) => {
         '<soap:Header/>',
         '<soap:Body>',
             '<login xmlns="urn:partner.soap.sforce.com">',
-            '<username>' + username + '</username>',
-            '<password>' + password + '</password>',
+            `<username>${escape(username)}</username>`,
+            `<password>${escape(password)}</password>`,
             '</login>',
         '</soap:Body>',
         '</soap:Envelope>'
@@ -119,7 +135,7 @@ const createLogoutBody = (sessionId) => {
 
 const createQueryBody = (sessionId, soql, tooling) => {
 
-    const query = soql.replace(/\r|\n|\r\n/gi, " ").replace(";", "");
+    const query = soql.replace(/\r|\n|\r\n/gi, " ").replace(/;$/,"");
 
     const tns = tooling ? "urn:tooling.soap.sforce.com" : "urn:partner.soap.sforce.com";
 
@@ -134,7 +150,7 @@ const createQueryBody = (sessionId, soql, tooling) => {
         '</soap:Header>',
         '<soap:Body>',
             `<query xmlns="${tns}">`,
-                `<queryString>${query}</queryString>`,
+                `<queryString>${escape(query)}</queryString>`,
             '</query>',
         '</soap:Body>',
         '</soap:Envelope>'
@@ -169,7 +185,7 @@ const createDescribeBody = (sessionId, name) => {
         '</soap:Header>',
         '<soap:Body>',
             '<describeSObjects xmlns="urn:partner.soap.sforce.com">',
-                `<sObjectType>${name}</sObjectType>`,
+                `<sObjectType>${escape(name)}</sObjectType>`,
             '</describeSObjects>',
         '</soap:Body>',
         '</soap:Envelope>'
@@ -188,7 +204,7 @@ const createExecuteBody = (sessionId, debuggingHeader, code) => {
         '</soap:Header>',
         '<soap:Body>',
             '<executeAnonymous xmlns="http://soap.sforce.com/2006/08/apex">',
-                `<string>${code}</string>`,
+                `<string>${escape(code)}</string>`,
             '</executeAnonymous>',
         '</soap:Body>',
         '</soap:Envelope>'
@@ -198,9 +214,9 @@ const createExecuteBody = (sessionId, debuggingHeader, code) => {
 
 const commons = (request) => {
     return {
-        version: request.apiversion ? request.apiversion : "43.0",
-        sessionId: request.session.token,
-        serverUrl: request.session.serverUrl,
+        version: request.apiversion ? escape(request.apiversion) : "43.0",
+        sessionId: escape(request.session.token),
+        serverUrl: escape(request.session.serverUrl),
         language: request.header("locale-options") ? request.header("locale-options") : "ja",
     }
 };

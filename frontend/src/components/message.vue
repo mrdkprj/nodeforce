@@ -1,5 +1,5 @@
 <template>
-    <div class="message-area" :class="state"><div class="message">{{message}}</div></div>
+    <div class="message-area" :class="{fault: !!message}"><div class="message">{{message}}</div></div>
 </template>
 
 <script>
@@ -8,16 +8,6 @@ export default {
     data: function(){
         return {
             message: "",
-        }
-    },
-
-    computed: {
-        state: function(){
-            if(this.message == ""){
-                return "";
-            }else{
-                return "fault";
-            }
         }
     },
 

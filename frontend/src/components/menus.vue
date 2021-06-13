@@ -1,8 +1,8 @@
 <template>
     <ul id="menus">
-        <li><a id="soql" class="menu-item" v-bind:class="{displayed: current == 'soql'}" @click="onMenuClick">SOQL</a></li>
-        <li><a id="describe" class="menu-item" v-bind:class="{displayed: current == 'describe'}" @click="onMenuClick">Describe</a></li>
-        <li><a id="apex" class="menu-item" v-bind:class="{displayed: current == 'apex'}" @click="onMenuClick">Apex</a></li>
+        <li><a id="soql" class="menu-item" :class="{displayed: current == 'soql'}" @click="onMenuClick">SOQL</a></li>
+        <li><a id="describe" class="menu-item" :class="{displayed: current == 'describe'}" @click="onMenuClick">Describe</a></li>
+        <li><a id="apex" class="menu-item" :class="{displayed: current == 'apex'}" @click="onMenuClick">Apex</a></li>
     </ul>
 </template>
 
@@ -18,8 +18,7 @@ export default {
     methods: {
 
         onMenuClick: function(e) {
-            const clickedAnchor = e.target.id;
-            this.current = clickedAnchor;
+            this.current = e.target.id;
             this.$emit('change', {target: this.current});
         }
 

@@ -7,7 +7,7 @@
             <progress-line></progress-line>
             <div id="menuList">
                 <dropdown></dropdown>
-                <menus v-on:change="onMenuChanged"></menus>
+                <menus @change="onMenuChanged"></menus>
             </div>
         </div>
 
@@ -73,7 +73,7 @@ export default {
                 }
 
                 if(e.target.id === "apexCode") {
-                    this.$refs.apex.onExecuteClick(e);
+                    this.$refs.apex.executeAnonymous();
                 }
             }
 
@@ -124,9 +124,6 @@ export default {
         z-index: 3000;
     }
 
-    /* ------------------------------
-    Menu display
-    ------------------------------ */
     #soqlContent,
     #describeContent,
     #apexContent{

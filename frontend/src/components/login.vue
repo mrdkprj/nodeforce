@@ -90,13 +90,6 @@ export default {
                 this.message = ex.message;
             }
         },
-/*
-        created: function () {
-            if (this.$store.getters.isAuthenticated) {
-                this.$router.push("/")
-            }
-        },
-*/
     }
 }
 </script>

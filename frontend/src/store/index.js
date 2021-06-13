@@ -12,12 +12,13 @@ export default new Vuex.Store({
         http:http
     },
     getters: {
-        isAuthenticated: state => !!state.auth.username && state.auth.limit > new Date(),
+        isAuthenticated: state => !!state.auth.username && new Date(state.auth.limit) > new Date(),
         inProgress: state => state.http.inprogress,
         currentUser: state => state.auth.username,
     },
     plugins: [createPersistedState({
         key: "sf.node.app",
-        storage: localStorage,
+        paths: ['auth.username',"auth.limit"],
+        storage: window.sessionStorage,
     })]
 })

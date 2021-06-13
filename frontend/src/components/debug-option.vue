@@ -1,5 +1,5 @@
 <template>
-    <div id="debugOptionArea" class="debug-option-area" v-bind:class="{ 'open': isOpened}">
+    <div id="debugOptionArea" class="debug-option-area" :class="{ 'open': isOpened}">
         <button type="button" id="debugOptionBtn" class="btn btn-sub" @click="toggleDebugOption">Debug option</button>
         <div id="bebugOptionTbl" class="debug-option-tbl">
             <div class="close-btn-area"><button class="closebtn" @click="toggleDebugOption">×</button></div>
@@ -48,16 +48,18 @@ export default {
                 Visualforce:"INFO",System:"FINE",
                 All:"NONE"
             },
-
-            tbl: null
         }
     },
 
     methods: {
 
-        toggleDebugOption: function(e){
+        toggleDebugOption: function(){
             this.isOpened = !this.isOpened;
         },
+
+        closeDebugOption: function(){
+            this.isOpened = false;
+        }
 
     },
 
