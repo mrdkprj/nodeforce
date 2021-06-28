@@ -88,11 +88,11 @@ export default {
             let list;
 
             if(this.sobjectCategory == 0){
-                list = this.sObjects.map(e => this.useObjectName ? e.name : e.label);
+                list = this.sObjects.map(e => this.useObjectName ? e.name : {[e.name]: e.label});
             }else if(this.sobjectCategory == 1){
-                list = this.sObjects.filter(e => e.custom == "false").map(e => this.useObjectName ? e.name : e.label);
+                list = this.sObjects.filter(e => e.custom == "false").map(e => this.useObjectName ? e.name : {[e.name]: e.label});
             }else if(this.sobjectCategory == 2){
-                list = this.sObjects.filter(e => e.custom == "true").map(e => this.useObjectName ? e.name : e.label);
+                list = this.sObjects.filter(e => e.custom == "true").map(e => this.useObjectName ? e.name : {[e.name]: e.label});
             }
 
             this.pulldown.create(list);
@@ -104,10 +104,6 @@ export default {
 
             if(!sobject){
                 return;
-            }
-
-            if(this.useObjectName == false){
-                //sobject =
             }
 
             this.$refs.message.hideMessageArea();

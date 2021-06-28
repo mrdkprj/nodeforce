@@ -80,40 +80,59 @@ export default class Pulldown{
         this.value = null;
         this.closePulldown();
 
-        if(Array.isArray(data)){
-            const convertedData = data.map(function(value){
-               return this.toStringNullSafe(value);
-            }, this);
-            this.data = convertedData;
-            this._data = convertedData;
-        }else{
-            this.data = [];
-            this._data = [];
-        }
+        this._prepareData(data);
+
         this.filtered = false;
         this.optionArea.innerHTML = "";
         this.holder.textContent = "";
         this.selectButton.textContent = "";
     }
 
+    _prepareData(data){
+        this.data = {};
+        this._data = {};
+
+        let key, value;
+        if(Array.isArray(data)){
+            data.forEach((entry) => {
+                if(typeof entry === "object"){
+                    Object.entries(entry).forEach(([k, v]) => {
+                        key = this.toStringNullSafe(k);
+                        value = this.toStringNullSafe(v);
+                    })
+                }else{
+                    key = this.toStringNullSafe(entry);
+                    value = key;
+                }
+                this.data[key] = value;
+                this._data[key] = value;
+            });
+        }else{
+            this.data = [];
+            this._data = [];
+        }
+
+    }
+
     addOptions(){
         const options = document.createDocumentFragment();
 
-        let len = 0;
+        let maxLen = 0;
         this.holderText = null;
 
-        this.data.forEach((value) => {
+        Object.entries(this.data).forEach(([value, label]) => {
             const option = document.createElement("li");
             const text = document.createElement("a");
             text.addEventListener("mousedown", this.onItemClick.bind(this));
             text.classList.add("option");
-            text.textContent = value;
+            text.textContent = label;
+            text.setAttribute("data-value", value);
             option.appendChild(text);
             options.appendChild(option);
 
-            if(value.length >= len){
-                len = value.length;
-                this.holderText = value;
+            if(label.length >= maxLen){
+                maxLen = label.length;
+                this.holderText = label;
             }
 
             if(this.value == value){
@@ -129,7 +148,7 @@ export default class Pulldown{
 
         e.preventDefault();
 
-        if(this.data.length <= 0){
+        if(Object.keys(this.data).length <= 0){
             this.closePulldown();
             return;
         }
@@ -160,6 +179,7 @@ export default class Pulldown{
 
     onItemClick(e){
         if(e.button == 2){
+            e.preventDefault();
             return;
         }
 
@@ -167,7 +187,7 @@ export default class Pulldown{
 
         e.target.classList.add("selected");
         this.setCurrent(e.target);
-        this.value = e.target.childNodes[0].textContent;
+        this.value = e.target.getAttribute("data-value");
         this.selectButton.textContent = this.value;
         this.closePulldown();
     }
