@@ -47,7 +47,7 @@ module.exports = {
 
             const response = await call(createCallOptions(params));
             const result = response.Body.loginResponse.result;
-            return {username:result.userInfo.userName, token:result.sessionId, serverUrl:result.serverUrl, sessionSeconds:result.userInfo.sessionSecondsValid};
+            return {userInfo:result.userInfo, token:result.sessionId, serverUrl:result.serverUrl, sessionSeconds:result.userInfo.sessionSecondsValid};
 
         },
 

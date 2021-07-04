@@ -59,6 +59,8 @@ export default {
     mounted(){
         const parent = document.getElementById("sobjectList");
         parent.appendChild(this.pulldown.pulldown);
+        this.sObjects = this.$store.state.auth.list;
+        this.createOptions();
     },
 
     methods: {

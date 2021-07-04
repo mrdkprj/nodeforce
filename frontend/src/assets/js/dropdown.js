@@ -21,7 +21,7 @@ export default class Dropdown{
 		this.searchText = document.createElement("input");
 		this.searchText.type = "text";
 		this.searchText.classList.add("search-text");
-		this.searchText.addEventListener("input", this.filter.bind(this));
+		this.searchText.addEventListener("keyup", this.filter.bind(this));
 		const clearTextBtn = document.createElement("div");
 		clearTextBtn.classList.add("clear-text");
 		clearTextBtn.innerHTML = "&#10006;";
@@ -182,6 +182,8 @@ export default class Dropdown{
 	}
 
 	filter(e){
+
+		if(e.isComposing) return;
 
 		if(this.searchText.value == null || this.searchText.value == ""){
 			this.clearTextFilter();

@@ -5,22 +5,28 @@ export default {
     state: {
         username: "",
         limit: new Date(),
+        list: {},
     },
 
     mutations: {
 
-        create (state, data) {
+        create (state, {header, data}) {
             state.username = data.username;
-            state.limit = new Date(data.limit);
+            state.limit = new Date(header.limit);
         },
 
-        udpate (state, data){
-            state.limit = new Date(data.limit);
+        udpate (state, {header, data}){
+            state.limit = new Date(header.limit);
+
+            if(data.list){
+                state.list = data.list;
+            }
         },
 
         destroy (state) {
             state.username = "";
             state.limit = new Date();
+            state.list = {};
         },
 
     },
@@ -29,12 +35,12 @@ export default {
 
         async create ({ commit, dispatch }, data) {
             const res = await dispatch("http/post", { url: "/login", data }, { root: true });
-            commit("create", res.headers);
+            commit("create", {header:res.headers, data: res.data});
         },
 
         async request ({ commit, dispatch }, data) {
             const res = await dispatch("http/post", { url: data.url, data:data.data }, { root: true });
-            commit("udpate", res.headers);
+            commit("udpate", {header:res.headers, data: res.data});
             return res.data;
         },
 

@@ -1,6 +1,6 @@
 <template>
     <div id="debugOptionArea" class="debug-option-area" :class="{ 'open': isOpened}">
-        <button type="button" id="debugOptionBtn" class="btn btn-sub" @click="toggleDebugOption">Debug option</button>
+        <button type="button" id="debugOptionBtn" class="btn btn-sub debug-option-btn" @click="toggleDebugOption">Debug option</button>
         <div id="bebugOptionTbl" class="debug-option-tbl">
             <div class="close-btn-area"><button class="closebtn" @click="toggleDebugOption">×</button></div>
             <div class="debug-option-row" v-for="categories in logCategories" :key="categories">
@@ -132,5 +132,11 @@ export default {
         border-radius:4px;
         font-size:12px;
         padding:3px;
+    }
+
+    .open .debug-option-btn{
+        color: #333;
+        background-color: #e6e6e6;
+        border-color: #adadad;
     }
 </style>

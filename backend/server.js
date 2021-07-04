@@ -1,13 +1,13 @@
-const express = require('express');
-const redis = require('redis')
-const session = require('express-session')
-const RedisStore = require('connect-redis')(session)
-const path = require('path');
-const client = require('./lib/client.js');
+const express = require("express");
+const redis = require("redis")
+const session = require("express-session")
+const RedisStore = require("connect-redis")(session)
+const path = require("path");
+const client = require("./lib/client.js");
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
 const redisClient = redis.createClient();
 
@@ -20,8 +20,8 @@ app.use(
 	  secure: true,
 	  httpOnly: true,
 	  sameSite: true,
-	  //domain: 'localhost',
-	  //path: 'foo/bar',
+	  //domain: "localhost",
+	  //path: "foo/bar",
 	  resave: false,
 	  saveUninitialized: true,
 	})
@@ -32,12 +32,12 @@ const normalResposne = ({request, response, result}) => {
 	response.status(200).json(result)
 }
 
-app.get('/main', (request, response) => {
+app.get("/main", (request, response) => {
 	response.render("index.html", {});
 })
 
 // POST method route
-app.post('/login', async (request, response) => {
+app.post("/login", async (request, response) => {
 	try{
 
 		const result = await client.login(request);
@@ -48,10 +48,9 @@ app.post('/login', async (request, response) => {
 			request.session.cookie.maxAge = msec;
 			request.session.token = result.token;
 			request.session.serverUrl = result.serverUrl;
-			request.session.username = result.username;
+			request.session.userInfo = result.userInfo;
 
-			response.append("username", result.username)
-			return normalResposne({request, response});
+			return normalResposne({request, response, result:{username:result.userInfo.userFullName}});
 		})
 
 	}catch(ex){
@@ -59,7 +58,7 @@ app.post('/login', async (request, response) => {
 	}
 })
 
-app.delete('/logout', async (request, response) => {
+app.delete("/logout", async (request, response) => {
 	try{
 		await client.logout(request);
 	}catch(ex){
@@ -70,14 +69,18 @@ app.delete('/logout', async (request, response) => {
 	}
 })
 
-app.all('*', async (request, response, next) => {
+app.all("*", async (request, response, next) => {
 
 	if(request.session.token) return next();
 
 	response.status(400).json("Session expired. Try login after logout.") ;
 });
 
-app.post('/soql', async (request, response) => {
+app.post("/user", async (request, response) => {
+	return normalResposne({request, response, result})
+})
+
+app.post("/soql", async (request, response) => {
 	try{
 		const result = await client.query(request);
 		return normalResposne({request, response, result})
@@ -86,7 +89,7 @@ app.post('/soql', async (request, response) => {
 	}
 })
 
-app.post('/list', async (request, response) => {
+app.post("/list", async (request, response) => {
 	try{
 		const result = await client.listSobject(request);
 		return normalResposne({request, response, result})
@@ -95,7 +98,7 @@ app.post('/list', async (request, response) => {
 	}
 })
 
-app.post('/describe', async (request, response) => {
+app.post("/describe", async (request, response) => {
 	try{
 		const result = await client.describe(request);
 		return normalResposne({request, response, result})
@@ -104,7 +107,7 @@ app.post('/describe', async (request, response) => {
 	}
 })
 
-app.post('/apex', async (request, response) => {
+app.post("/apex", async (request, response) => {
 	try{
 		const result = await client.execute(request);
 		return normalResposne({request, response, result})

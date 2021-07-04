@@ -6,7 +6,7 @@
         <div class="header">
             <progress-line></progress-line>
             <div id="menuList">
-                <dropdown></dropdown>
+                <user></user>
                 <menus @change="onMenuChanged"></menus>
             </div>
         </div>
@@ -33,7 +33,7 @@
 <script>
 import overlay from "@/components/overlay.vue";
 import progress from "@/components/progress.vue";
-import dropdown from "@/components/dropdown.vue";
+import user from "@/components/user.vue";
 import menus from "@/components/menus.vue";
 import soql from "@/components/soql.vue";
 import describe from "@/components/describe.vue";
@@ -50,7 +50,7 @@ export default {
     components: {
         "overlay": overlay,
         "progress-line": progress,
-        "dropdown": dropdown,
+        "user": user,
         "menus": menus,
         "soql": soql,
         "describe": describe,

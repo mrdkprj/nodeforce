@@ -9,8 +9,7 @@
                     <li><a locale-option="en_US">English</a></li>
                 </ul>
             </li>
-            <li><a id="refreshSObjects">Refresh sObjects</a></li>
-            <li><a id="refreshMetadata">Refresh Metadata</a></li>
+            <li><a @mousedown="getUserInfo()">Get UserInfo</a></li>
             <li role="separator" class="divider"></li>
             <li><a @mousedown="logout()">Logout</a></li>
         </ul>
@@ -40,6 +39,10 @@ export default {
     },
 
     methods: {
+
+        getUserInfo: async function(){
+
+        },
 
         logout: async function(){
             await this.$store.dispatch('auth/destroy');

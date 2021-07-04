@@ -18,7 +18,7 @@ export default new Vuex.Store({
     },
     plugins: [createPersistedState({
         key: "sf.node.app",
-        paths: ['auth.username',"auth.limit"],
+        paths: ['auth.username',"auth.limit", "auth.list"],
         storage: window.sessionStorage,
     })]
 })

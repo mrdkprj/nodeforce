@@ -205,6 +205,8 @@ export default class Pulldown{
 
     filter(e){
 
+        if(e.isComposing) return;
+
         if(e.target.value == "" || e.target.value == null){
             this.clearFilter();
             return;
@@ -216,9 +218,9 @@ export default class Pulldown{
 
         this.optionArea.innerHTML = "";
 
-        this.data = this._data.filter(function(item){
-            return item.toUpperCase().includes(value);
-        })
+        this.data = Object.fromEntries(Object.entries(this._data).filter(([k,v]) =>{
+            return v.toUpperCase().includes(value);
+        }))
 
         this.addOptions();
     }
