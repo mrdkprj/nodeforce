@@ -65,11 +65,13 @@ export default class Pulldown{
 
     create(data){
 
+        console.log(this.holder.offsetWidth)
         this._init(data);
-
+        console.log(this.holder.offsetWidth)
         this.addOptions();
-
+        console.log(this.holder.offsetWidth)
         this.holder.textContent = this.holderText;
+        console.log(this.holder.offsetWidth)
         this.optionArea.style["min-width"] = this.holder.offsetWidth + "px";
 
         return this.pulldown;
