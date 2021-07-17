@@ -28,8 +28,7 @@ app.use(
 )
 
 const normalResposne = ({request, response, result}) => {
-	response.append("limit", request.session.cookie.expires)
-	response.status(200).json(result)
+	response.status(200).json({...result, ...{limit:request.session.cookie.expires}})
 }
 
 app.get("/main", (request, response) => {
@@ -43,7 +42,7 @@ app.post("/login", async (request, response) => {
 		const result = await client.login(request);
 
 		request.session.regenerate(function(err) {
-			const msec = result.sessionSeconds * 100;
+			const msec = parseInt(result.sessionSeconds) * 100;
 			request.session.cookie.expires = new Date(Date.now() + msec)
 			request.session.cookie.maxAge = msec;
 			request.session.token = result.token;

@@ -10,13 +10,13 @@ export default {
 
     mutations: {
 
-        create (state, {header, data}) {
+        create (state, data) {
             state.username = data.username;
-            state.limit = new Date(header.limit);
+            state.limit = new Date(data.limit);
         },
 
-        udpate (state, {header, data}){
-            state.limit = new Date(header.limit);
+        udpate (state, data){
+            state.limit = new Date(data.limit);
 
             if(data.list){
                 state.list = data.list;
@@ -35,12 +35,12 @@ export default {
 
         async create ({ commit, dispatch }, data) {
             const res = await dispatch("http/post", { url: "/login", data }, { root: true });
-            commit("create", {header:res.headers, data: res.data});
+            commit("create", res.data);
         },
 
         async request ({ commit, dispatch }, data) {
             const res = await dispatch("http/post", { url: data.url, data:data.data }, { root: true });
-            commit("udpate", {header:res.headers, data: res.data});
+            commit("udpate", res.data);
             return res.data;
         },
 
