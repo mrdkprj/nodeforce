@@ -15,13 +15,11 @@ app.use(
 	session({
 	  store: new RedisStore({ client: redisClient }),
 	  cookie: { maxAge: 60000 },
-	  secret: "stfsdf",
-	  name: "sessionId",
+	  secret: process.env.NODE_ENV == "production" ? ENV["session_secret"] : "secret",
+	  name: "sforce.njs",
 	  secure: true,
 	  httpOnly: true,
 	  sameSite: true,
-	  //domain: "localhost",
-	  //path: "foo/bar",
 	  resave: false,
 	  saveUninitialized: true,
 	})
@@ -115,5 +113,4 @@ app.post("/apex", async (request, response) => {
 	}
 })
 
-console.log("port 8082")
 app.listen(process.env.PORT || 8082)
