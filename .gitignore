@@ -1,6 +1,5 @@
 nodeforce.code-workspace
 frontend/node_modules/
-backend/node_modules/
+node_modules/
 backend/public/*
 !backend/public/.keep
-backend/run.bat
