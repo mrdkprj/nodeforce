@@ -15,7 +15,7 @@ app.use(
 	session({
 	  store: new RedisStore({ client: redisClient }),
 	  cookie: { maxAge: 60000 },
-	  secret: process.env.NODE_ENV == "production" ? ENV["session_secret"] : "secret",
+	  secret: process.env.NODE_ENV == "production" ? process.env.session_secret : "secret",
 	  name: "sforce.njs",
 	  secure: true,
 	  httpOnly: true,
