@@ -279,7 +279,7 @@ export default class GridTable {
 		const getSearchDialog = () => {
 			const dialog = document.createElement("div");
 			dialog.classList.add("dialog");
-			dialog.style.top = (this.headerHeight + 1) + "px";
+			dialog.style.top = "0px";
 			dialog.style.right = "20px";
 			const txt = document.createElement("textarea");
 			txt.spellcheck = false;

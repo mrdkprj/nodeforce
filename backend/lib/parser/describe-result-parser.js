@@ -14,17 +14,19 @@ module.exports = {
 
     parse(request, result){
 
+        let keyBase = {};
         const rows = [];
 
-        result.fields.forEach((field) => {
+        result.fields.forEach(field => {
+            Object.assign(keyBase, field);
+        })
 
-            const row = Object.entries(field)
-                        .sort(([a,],[b,]) => fields.indexOf(a) - fields.indexOf(b))
-                        .filter(([k,v]) => fields.includes(k))
-                        .map(([k,v]) => flatten([k,v]))
-                        .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
+        const header = Object.keys(keyBase).sort((a,b) => fields.indexOf(a) - fields.indexOf(b));
 
-            rows.push(Object.values(row));
+        result.fields.forEach(field => {
+
+            const row = header.map(key => getValue(key, field));
+            rows.push(row);
         })
 
         return {
@@ -32,7 +34,7 @@ module.exports = {
                 name: result.name,
                 label: result.label,
                 prefix: result.keyPrefix,
-                header: fields,
+                header: header,
                 rows: rows,
         };
 
@@ -40,16 +42,19 @@ module.exports = {
 
 }
 
-const flatten = ([k,v]) => {
+const getValue = (key, field) => {
 
-        if(k == "picklistValues"){
-            const values = Array.from(v).map((obj) => obj["value"]).join("\n");
-            return [k, values];
-        }
+    if(!field[key]) return null;
 
-        if(Array.isArray(v)){
-            return [k, v.join("\n")];
-        }
+    let value = field[key];
 
-        return [k, v];
+    if(key == "picklistValues"){
+        value = Array.from(value).map((obj) => obj["value"]).join("\n");
+    }
+
+    if(Array.isArray(value)){
+        value = value.join("\n");
+    }
+
+    return value;
 };

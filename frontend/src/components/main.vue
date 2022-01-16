@@ -66,13 +66,14 @@ export default {
         onkeydown: function(e) {
 
             if (e.ctrlKey && (e.key === "r" || e.key === "Enter")) {
-                e.preventDefault();
 
                 if (e.target.id === "inputSoql"){
+                    e.preventDefault();
                     this.$refs.soql.executeSoql();
                 }
 
                 if(e.target.id === "apexCode") {
+                    e.preventDefault();
                     this.$refs.apex.executeAnonymous();
                 }
             }

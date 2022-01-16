@@ -29,7 +29,7 @@ export default {
                 url,
                 headers,
                 data,
-                timeout: 15000,
+                //timeout: 15000,
             }
 
             try{
